@@ -1,0 +1,27 @@
+{
+  "name": "hjernebyggesettet.github.io",
+  "version": "1.0.0",
+  "description": "Neural network simulator for web",
+  "main": "src/index.html",
+  "scripts": {
+    "start": "parcel src/index.html --open",
+    "build": "parcel build src/index.html --public-url ./ --no-source-maps"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com:hjernebyggesettet/hjernebyggesettet.github.io.git"
+  },
+  "keywords": [
+    "neuralnetwork",
+    "brain",
+    "js",
+    "javascript"
+  ],
+  "author": "Building Brains Team",
+  "license": "ISC",
+  "homepage": "https://hjernebyggesettet.github.io",
+  "devDependencies": {
+    "parcel-bundler": "^1.12.3",
+    "parcel-plugin-clean-dist": "0.0.6"
+  }
+}

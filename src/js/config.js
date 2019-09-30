@@ -1,0 +1,16 @@
+export const NEURON_RADIUS = 15
+
+export const SYNAPSE_STARTRADIUS = NEURON_RADIUS
+export const SYNAPSE_STOPRADIUS = NEURON_RADIUS * 0.3
+export const SYNAPSE_DELETEBUTTONRADIUS = 15
+export const SYNAPSE_ACTIONPOTENTIALRADIUS = 3
+
+export const COLOR_EXCITATORY = '#24CC76'
+export const COLOR_INHIBITORY = '#F94B4A'
+export const COLOR_BACKGROUND = 'white'
+export const COLOR_TOOLING =    '#353535'
+export const COLOR_ACTIONPOTENTIAL = '#F3F1B7'
+
+export const MENU_RADIUS = 90
+export const MENU_BUTTONRADIUS = 25
+export const MENU_LINETHICKNESS = 1
