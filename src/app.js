@@ -411,10 +411,10 @@ const app = {
 						strokeWeight(20);
 						stroke(240, 0, 0, 50);
 						line(
-							synapse.master.x,
-							synapse.master.y,
-							synapse.slave.x,
-							synapse.slave.y,
+							synapse.axon.x,
+							synapse.axon.y,
+							synapse.dendrite.x,
+							synapse.dendrite.y,
 						);
 						strokeWeight(1);
 					}
