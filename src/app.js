@@ -1,37 +1,31 @@
+const POTENTIAL_THRESHOLD = 100;
+const POTENTIAL_IMPULSE = 100;
+const POTENTIAL_LIMIT = 200;
+const POTENTIAL_DECAY = 60;
+
+const FREQUENCY_BASE = 2; // Hz
+const FREQUENCY_DECAY = 1; // Hz/s
+const FREQUENCY_IMPULSE = 1;
+const FREQUENCY_LIMIT = 10;
+
+const PULSE_DURATION = 1; // s
+const PULSE_LENGTH_INDEPENDENT_SPEED = 500; // pixels/s
+const PULSE_LIGHT_DURATION = 2; // s
+
+const NEURON_RADIUS = 20;
+const TOOL_BANNER_HEIGHT = 40;
+
+class Network {
+	/** @type {Neuron[]} */
+	neurons = [];
+}
+
 const app = {
-	network: {
-		// alt som har med det nåværende nevrale nettet å gjøre legges i et objekt
-		potentialThreshold: 100,
-		potentialPulseIncrement: 80,
-		potentialPulseDecrement: 80,
-		potentialLimit: 200,
-
-		baseFrequency: 2, // Hz
-		frequencyStabilize: 1, // Hz/s
-		frequencyIncrement: 1,
-		frequencyDecrement: 1,
-		frequencyLimit: 10,
-
-		decayMode: "linear",
-		exponentialDecay: 2, // Antall sekunder
-		linearDecay: 60, // Potensial per sekund
-
-		pulseMode: "synapseLengthIndependent",
-		pulseDuration: 1000, // Millisekunder
-		pulseDistance: 500, // Hvor mange pixler pulsen skal bevege seg per sekund, gjelder bare når synapsen er lengdeavhengig
-		pulseLightDuration: 2000,
-
-		neurons: [],
-
-		previousMillis: 0, // Tellevarabel, holder på antall millisekunder fra forrige frame til nåværende
-	},
-
+	network: new Network(),
+	previousMillis: 0, // Tellevarabel, holder på antall millisekunder fra forrige frame til nåværende
 	workspace: undefined,
 	toolBanner: undefined,
-	toolBannerHeight: 40,
-	toolBannerWidth: 20,
 
-	neuronRadius: 20,
 	tools: [
 		{
 			// Move tool
@@ -167,7 +161,7 @@ const app = {
 			display: () => {
 				noFill();
 				stroke(120);
-				ellipse(mouseX, mouseY, app.neuronRadius * 2, app.neuronRadius * 2);
+				ellipse(mouseX, mouseY, NEURON_RADIUS * 2, NEURON_RADIUS * 2);
 			},
 			inactiveDisplay: () => {},
 			img: "neuron.png",
@@ -394,8 +388,8 @@ const app = {
 					ellipse(
 						neuron.x,
 						neuron.y,
-						app.neuronRadius * 2 + 20,
-						app.neuronRadius * 2 + 20,
+						NEURON_RADIUS * 2 + 20,
+						NEURON_RADIUS * 2 + 20,
 					);
 				} else {
 					const synapse = mouseOverSynapse();
@@ -438,10 +432,10 @@ class Neuron {
 		this.y = iy;
 		this.potential = 0;
 		this.potentialCompletion = 0;
-		this.lastPulseTimestamp = -app.network.pulseLightDuration;
+		this.lastPulseTimestamp = -PULSE_LIGHT_DURATION * 1000;
 
 		this.spontaneousActivity = false;
-		this.frequency = app.network.baseFrequency;
+		this.frequency = FREQUENCY_BASE;
 		this.frequencyCounter = this.frequency * 60;
 
 		this.axons = [];
@@ -453,13 +447,7 @@ class Neuron {
 
 	updatePotential() {
 		if (this.spontaneousActivity) {
-			// Sørger for at egenfrekvensen ikke blir negativ
-			if (this.frequency < 0) {
-				this.frequency = 0;
-			} else if (this.frequency > app.network.frequencyLimit) {
-				// Og at den ikke overskrider maksimal frekvens
-				this.frequency = app.network.frequencyLimit;
-			}
+			this.frequency = Math.max(0, Math.min(FREQUENCY_LIMIT, this.frequency));
 
 			// Fyrer med riktig frekvens hvis nevronet har egenfrekvens
 			if (this.frequencyCounter < round(60 / this.frequency)) {
@@ -470,56 +458,59 @@ class Neuron {
 			}
 
 			// Stabiliserer frekvensen
-			if (this.frequency > app.network.baseFrequency) {
-				this.frequency -= app.network.frequencyStabilize / 60;
-				if (this.frequency < app.network.baseFrequency) {
-					this.frequency = app.network.baseFrequency;
+			if (this.frequency > FREQUENCY_BASE) {
+				this.frequency -= FREQUENCY_DECAY / 60;
+				if (this.frequency < FREQUENCY_BASE) {
+					this.frequency = FREQUENCY_BASE;
 				}
-			} else if (this.frequency < app.network.baseFrequency) {
-				this.frequency += app.network.frequencyStabilize / 60;
-				if (this.frequency > app.network.baseFrequency) {
-					this.frequency = app.network.baseFrequency;
+			} else if (this.frequency < FREQUENCY_BASE) {
+				this.frequency += FREQUENCY_DECAY / 60;
+				if (this.frequency > FREQUENCY_BASE) {
+					this.frequency = FREQUENCY_BASE;
 				}
 			}
 		} else {
-			// Sørger for at ikke potensialet er utenfor grensene
-			if (this.potential > app.network.potentialLimit) {
-				this.potential = app.network.potentialLimit;
-			} else if (this.potential < -app.network.potentialLimit) {
-				this.potential = -app.network.potentialLimit;
-			}
-
-			// Fyrer aksonet om potensialet er over grensepotensialet
-			if (this.potential >= app.network.potentialThreshold) {
-				// fyrer
-				this.newPulse();
-				this.potential = -app.network.linearDecay;
-			}
+			this.potential = Math.max(
+				-POTENTIAL_LIMIT,
+				Math.min(POTENTIAL_LIMIT, this.potential),
+			);
 
 			// Får potensialet til å nærme seg hvilepotensialet (0)
-			if (app.network.decayMode === "linear") {
-				if (this.potential > 0) {
-					this.potential -=
-						(app.network.linearDecay * (millis() - app.previousMillis)) / 1000;
-					if (this.potential < 0) {
-						this.potential = 0;
-					}
-				} else if (this.potential < 0) {
-					this.potential +=
-						(app.network.linearDecay * (millis() - app.previousMillis)) / 1000;
-					if (this.potential > 0) {
-						this.potential = 0;
-					}
+			if (this.potential > 0) {
+				this.potential -=
+					(POTENTIAL_DECAY * (millis() - app.previousMillis)) / 1000;
+				if (this.potential < 0) {
+					this.potential = 0;
 				}
-			} else if (app.network.decayMode === "exponential") {
-				this.potential *= app.network.exponentialDecayBase;
+			} else if (this.potential < 0) {
+				this.potential +=
+					(POTENTIAL_DECAY * (millis() - app.previousMillis)) / 1000;
+				if (this.potential > 0) {
+					this.potential = 0;
+				}
 			}
 
 			this.potentialCompletion = constrain(
-				this.potential / app.network.potentialThreshold,
+				this.potential / POTENTIAL_THRESHOLD,
 				-1,
 				1,
 			);
+		}
+	}
+
+	fire(excitatory) {
+		if (this.spontaneousActivity) {
+			this.frequency += excitatory ? FREQUENCY_IMPULSE : -FREQUENCY_IMPULSE;
+			return;
+		}
+
+		this.potential += excitatory ? POTENTIAL_IMPULSE : -POTENTIAL_IMPULSE;
+
+		// Fyrer aksonet om potensialet er over grensepotensialet
+		if (this.potential >= POTENTIAL_THRESHOLD) {
+			// fyrer
+			this.newPulse();
+			this.potential = -POTENTIAL_DECAY;
 		}
 	}
 
@@ -538,7 +529,7 @@ class Neuron {
 		// Tegner seg selv
 		if (
 			!this.spontaneousActivity &&
-			millis() - this.lastPulseTimestamp <= app.network.pulseLightDuration
+			millis() - this.lastPulseTimestamp <= PULSE_LIGHT_DURATION * 1000
 		) {
 			stroke(240, 240, 0);
 		} else {
@@ -546,7 +537,7 @@ class Neuron {
 		}
 
 		fill(20);
-		ellipse(this.x, this.y, app.neuronRadius * 2, app.neuronRadius * 2);
+		ellipse(this.x, this.y, NEURON_RADIUS * 2, NEURON_RADIUS * 2);
 
 		if (this.spontaneousActivity) {
 			fill(240);
@@ -565,44 +556,26 @@ class Neuron {
 			ellipse(
 				this.x,
 				this.y,
-				2 * app.neuronRadius * this.potentialCompletion,
-				2 * app.neuronRadius * this.potentialCompletion,
+				2 * NEURON_RADIUS * this.potentialCompletion,
+				2 * NEURON_RADIUS * this.potentialCompletion,
 			);
 		} else if (this.potential < 0) {
 			fill(120, 0, 0);
 			ellipse(
 				this.x,
 				this.y,
-				2 * app.neuronRadius * -this.potentialCompletion,
-				2 * app.neuronRadius * -this.potentialCompletion,
+				2 * NEURON_RADIUS * -this.potentialCompletion,
+				2 * NEURON_RADIUS * -this.potentialCompletion,
 			);
 		}
 		if (!this.group) return;
 		// Tegner sirkel som indikerer at nevronet er i en gruppe
 		stroke(240, 240, 0);
 		noFill();
-		ellipse(this.x, this.y, app.neuronRadius * 4, app.neuronRadius * 4);
-	}
-
-	inhibitoryFire() {
-		if (!this.spontaneousActivity) {
-			this.potential -= app.network.potentialPulseDecrement;
-		} else {
-			this.frequency -= app.network.frequencyDecrement;
-		}
-	}
-
-	excitatoryFire() {
-		if (!this.spontaneousActivity) {
-			this.potential += app.network.potentialPulseIncrement;
-		} else {
-			this.frequency += app.network.frequencyIncrement;
-		}
+		ellipse(this.x, this.y, NEURON_RADIUS * 4, NEURON_RADIUS * 4);
 	}
 
 	newPulse() {
-		// Ganger varigheten (i sekunder) med framerate for at timingen skal bli riktig
-		//this.pulses.push(round(app.pulseDuration));
 		for (const synapse of this.axons) {
 			synapse.addPulse();
 		}
@@ -690,18 +663,15 @@ class Synapse {
 		const deltaMillis = millis() - app.previousMillis;
 		const increment =
 			deltaMillis /
+			1000 /
 			(isLengthDependent
-				? (1000 * distance) / app.network.pulseDistance
-				: app.network.pulseDuration);
+				? distance / PULSE_LENGTH_INDEPENDENT_SPEED
+				: PULSE_DURATION);
 
 		this.pulses = this.pulses
 			.filter((pulse) => {
 				if ((isLengthDependent && distance <= 0) || pulse >= 1) {
-					if (isExcitatory) {
-						dendriteNeuron.excitatoryFire();
-					} else {
-						dendriteNeuron.inhibitoryFire();
-					}
+					dendriteNeuron.fire(isExcitatory);
 					return false;
 				}
 				return true;
@@ -718,11 +688,11 @@ class Synapse {
 		);
 		this.normalizedX = (this.slave.x - this.master.x) / this.distance;
 		this.normalizedY = (this.slave.y - this.master.y) / this.distance;
-		this.distance -= app.neuronRadius * 2;
+		this.distance -= NEURON_RADIUS * 2;
 	}
 
 	display() {
-		const paddedRadius = app.neuronRadius * 1.25;
+		const paddedRadius = NEURON_RADIUS * 1.25;
 
 		// synapsen farges grønn hvis eksitatorisk, rød hvis inhibitorisk
 		if (this.type === "excitatory") {
@@ -742,8 +712,8 @@ class Synapse {
 			);
 		} else {
 			for (
-				let i = app.neuronRadius;
-				i < this.distance + app.neuronRadius * 0.75;
+				let i = NEURON_RADIUS;
+				i < this.distance + NEURON_RADIUS * 0.75;
 				i += 6
 			) {
 				point(
@@ -764,16 +734,16 @@ class Synapse {
 		for (const pulse of this.pulses) {
 			line(
 				this.master.x +
-					this.normalizedX * (app.neuronRadius + pulse * this.distance) +
+					this.normalizedX * (NEURON_RADIUS + pulse * this.distance) +
 					this.normalizedY * 5,
 				this.master.y +
-					this.normalizedY * (app.neuronRadius + pulse * this.distance) -
+					this.normalizedY * (NEURON_RADIUS + pulse * this.distance) -
 					this.normalizedX * 5,
 				this.master.x +
-					this.normalizedX * (app.neuronRadius + pulse * this.distance) -
+					this.normalizedX * (NEURON_RADIUS + pulse * this.distance) -
 					this.normalizedY * 5,
 				this.master.y +
-					this.normalizedY * (app.neuronRadius + pulse * this.distance) +
+					this.normalizedY * (NEURON_RADIUS + pulse * this.distance) +
 					this.normalizedX * 5,
 			);
 		}
@@ -814,7 +784,7 @@ function pointOverLine(
 function mouseOverNeuron() {
 	return (
 		app.network.neurons.find((neuron) =>
-			pointOverCircle(mouseX, mouseY, neuron.x, neuron.y, app.neuronRadius),
+			pointOverCircle(mouseX, mouseY, neuron.x, neuron.y, NEURON_RADIUS),
 		) || null
 	);
 }
@@ -850,15 +820,15 @@ function setup() {
 	document.body.oncontextmenu = () => false;
 
 	app.workspace = createCanvas(200, 200);
-	app.workspace.position(0, app.toolBannerHeight);
+	app.workspace.position(0, TOOL_BANNER_HEIGHT);
 	app.toolBanner = createDiv("");
 	app.toolBanner.id("toolBanner");
-	app.toolBanner.style("height", `${String(app.toolBannerHeight)}px`);
+	app.toolBanner.style("height", `${String(TOOL_BANNER_HEIGHT)}px`);
 
 	for (let i = 0; i < app.tools.length; ++i) {
 		app.tools[i].buttonElement = createDiv("");
-		app.tools[i].buttonElement.position(i * app.toolBannerHeight, 0);
-		app.tools[i].buttonElement.size(app.toolBannerHeight, app.toolBannerHeight);
+		app.tools[i].buttonElement.position(i * TOOL_BANNER_HEIGHT, 0);
+		app.tools[i].buttonElement.size(TOOL_BANNER_HEIGHT, TOOL_BANNER_HEIGHT);
 		app.tools[i].buttonElement.parent(app.toolBanner);
 		app.tools[i].buttonElement.addClass("toolButton");
 		if (i === 0) {
@@ -949,7 +919,7 @@ function updateWorkspaceSize() {
 	for (const neuron of app.network.neurons) {
 		neuron.constrainPosition();
 	}
-	resizeCanvas(window.innerWidth, window.innerHeight - app.toolBannerHeight);
+	resizeCanvas(window.innerWidth, window.innerHeight - TOOL_BANNER_HEIGHT);
 }
 
 window.addEventListener("resize", updateWorkspaceSize);
