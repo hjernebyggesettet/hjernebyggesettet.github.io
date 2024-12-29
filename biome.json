@@ -6,8 +6,9 @@
 		"useIgnoreFile": false
 	},
 	"files": {
+		"include": ["src/**/*.js", "src/**/*.css"],
 		"ignoreUnknown": false,
-		"ignore": []
+		"ignore": ["src/p5.*.js"]
 	},
 	"formatter": {
 		"enabled": true,
