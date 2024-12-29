@@ -1,10 +1,3 @@
-///////////////////////////////////////////////
-//////// N E V R O N S I M U L A T O R ////////
-///////////////////////////////////////////////
-/// Laget av Trym Sneltvedt - www.snelt.net ///
-///////////////////////////////////////////////
-
-// Hele programmet wrappes i et 'app'-objekt
 const app = {
 	network: {
 		// alt som har med det nåværende nevrale nettet å gjøre legges i et objekt
@@ -32,7 +25,6 @@ const app = {
 
 		previousMillis: 0, // Tellevarabel, holder på antall millisekunder fra forrige frame til nåværende
 	},
-	showPreferences: false,
 
 	workspace: undefined,
 	toolBanner: undefined,
@@ -51,23 +43,20 @@ const app = {
 			},
 			lclick: function () {
 				this.neuron = mouseOverNeuron();
-				if (this.neuron != null) {
-					this.dragging = true;
-					this.offsetX = mouseX - this.neuron.x;
-					this.offsetY = mouseY - this.neuron.y;
-				}
+				if (this.neuron == null) return;
+				this.dragging = true;
+				this.offsetX = mouseX - this.neuron.x;
+				this.offsetY = mouseY - this.neuron.y;
 			},
 			rclick: () => {},
 			drag: function () {
-				if (this.dragging) {
-					this.neuron.move(mouseX - this.offsetX, mouseY - this.offsetY);
-				}
+				if (!this.dragging) return;
+				this.neuron.move(mouseX - this.offsetX, mouseY - this.offsetY);
 			},
 			release: function () {
-				if (this.dragging) {
-					this.neuron = null;
-					this.dragging = false;
-				}
+				if (!this.dragging) return;
+				this.neuron = null;
+				this.dragging = false;
 			},
 			display: () => {},
 			inactiveDisplay: () => {},
@@ -86,29 +75,26 @@ const app = {
 			activate: () => {},
 			lclick: () => {
 				const neuron = mouseOverNeuron();
-				if (neuron != null) {
-					if (neuron.group) {
-						// Får alle nevroner i gruppen til å fyre
-						for (let i = 0; i < app.network.neurons.length; ++i) {
-							if (app.network.neurons[i].group) {
-								app.network.neurons[i].newPulse();
-							}
-						}
-					} else {
-						neuron.newPulse();
-					}
+				if (neuron == null) return;
+				if (!neuron.group) {
+					neuron.newPulse();
+					return;
+				}
+				// Får alle nevroner i gruppen til å fyre
+				for (const neuron of app.network.neurons) {
+					if (!neuron.group) continue;
+					neuron.newPulse();
 				}
 			},
 			rclick: () => {
 				const neuron = mouseOverNeuron();
-				if (neuron != null) {
-					if (!neuron.spontaneousActivity) {
-						if (neuron.group) {
-							neuron.group = 0;
-						} else {
-							neuron.group = 1;
-						}
-					}
+				if (neuron == null) return;
+				if (neuron.spontaneousActivity) return;
+
+				if (neuron.group) {
+					neuron.group = 0;
+				} else {
+					neuron.group = 1;
 				}
 			},
 			drag: () => {},
@@ -133,29 +119,25 @@ const app = {
 			},
 			display: function () {
 				noStroke();
-				if (this.pressing) {
-					if (this.fireCounter < 60 * this.firePeriod) {
-						++this.fireCounter;
-					} else {
-						for (let i = 0; i < app.network.neurons.length; ++i) {
-							if (
-								pointOverCircle(
-									app.network.neurons[i].x,
-									app.network.neurons[i].y,
-									mouseX,
-									mouseY,
-									this.radius,
-								)
-							) {
-								app.network.neurons[i].newPulse();
-							}
-						}
-						this.fireCounter = 0;
-					}
-					fill(240, 240, 0, 10);
-				} else {
+				if (!this.pressing) {
 					fill(240, 240, 0, 40);
+					return;
 				}
+
+				if (this.fireCounter < 60 * this.firePeriod) {
+					++this.fireCounter;
+				} else {
+					for (const neuron of app.network.neurons) {
+						if (
+							pointOverCircle(neuron.x, neuron.y, mouseX, mouseY, this.radius)
+						) {
+							neuron.newPulse();
+						}
+					}
+					this.fireCounter = 0;
+				}
+				fill(240, 240, 0, 10);
+
 				ellipse(mouseX, mouseY, this.radius * 2, this.radius * 2);
 			},
 			inactiveDisplay: () => {},
@@ -200,47 +182,43 @@ const app = {
 			},
 			lclick: function () {
 				const neuron = mouseOverNeuron();
-				if (neuron != null) {
-					if (this.masterNeuron == null) {
-						this.masterNeuron = neuron;
-					} else if (neuron !== this.masterNeuron) {
-						this.masterNeuron.newSynapse(neuron, "excitatory", false);
-						this.masterNeuron = null;
-					}
-				} else if (this.masterNeuron != null) {
+				if (neuron == null) {
+					this.masterNeuron = null;
+					return;
+				}
+				if (this.masterNeuron == null) {
+					this.masterNeuron = neuron;
+				} else if (neuron !== this.masterNeuron) {
+					this.masterNeuron.newSynapse(neuron, "excitatory", false);
 					this.masterNeuron = null;
 				}
 			},
 			rclick: () => {},
 			drag: () => {},
 			release: function () {
-				if (this.masterNeuron != null) {
-					const neuron = mouseOverNeuron();
-					if (neuron != null) {
-						if (neuron !== this.masterNeuron) {
-							this.masterNeuron.newSynapse(neuron, "excitatory", false);
-							this.masterNeuron = null;
-						}
-					}
-				}
+				if (this.masterNeuron == null) return;
+				const neuron = mouseOverNeuron();
+				if (neuron == null) return;
+				if (neuron === this.masterNeuron) return;
+				this.masterNeuron.newSynapse(neuron, "excitatory", false);
+				this.masterNeuron = null;
 			},
 			display: function () {
 				stroke(0, 240, 0);
-				if (this.masterNeuron != null) {
-					const distance = dist(
-						this.masterNeuron.x,
-						this.masterNeuron.y,
-						mouseX,
-						mouseY,
+				if (this.masterNeuron == null) return;
+				const distance = dist(
+					this.masterNeuron.x,
+					this.masterNeuron.y,
+					mouseX,
+					mouseY,
+				);
+				const normalizedX = (mouseX - this.masterNeuron.x) / distance;
+				const normalizedY = (mouseY - this.masterNeuron.y) / distance;
+				for (let i = 0; i < distance; i += 6) {
+					point(
+						this.masterNeuron.x + normalizedX * i,
+						this.masterNeuron.y + normalizedY * i,
 					);
-					const normalizedX = (mouseX - this.masterNeuron.x) / distance;
-					const normalizedY = (mouseY - this.masterNeuron.y) / distance;
-					for (let i = 0; i < distance; i += 6) {
-						point(
-							this.masterNeuron.x + normalizedX * i,
-							this.masterNeuron.y + normalizedY * i,
-						);
-					}
 				}
 			},
 			inactiveDisplay: () => {},
@@ -258,47 +236,43 @@ const app = {
 			},
 			lclick: function () {
 				const neuron = mouseOverNeuron();
-				if (neuron != null) {
-					if (this.masterNeuron == null) {
-						this.masterNeuron = neuron;
-					} else if (neuron !== this.masterNeuron) {
-						this.masterNeuron.newSynapse(neuron, "inhibitory", false);
-						this.masterNeuron = null;
-					}
-				} else if (this.masterNeuron != null) {
+				if (neuron == null) {
+					this.masterNeuron = null;
+					return;
+				}
+				if (this.masterNeuron == null) {
+					this.masterNeuron = neuron;
+				} else if (neuron !== this.masterNeuron) {
+					this.masterNeuron.newSynapse(neuron, "inhibitory", false);
 					this.masterNeuron = null;
 				}
 			},
 			rclick: () => {},
 			drag: () => {},
 			release: function () {
-				if (this.masterNeuron != null) {
-					const neuron = mouseOverNeuron();
-					if (neuron != null) {
-						if (neuron !== this.masterNeuron) {
-							this.masterNeuron.newSynapse(neuron, "inhibitory", false);
-							this.masterNeuron = null;
-						}
-					}
-				}
+				if (this.masterNeuron == null) return;
+				const neuron = mouseOverNeuron();
+				if (neuron == null) return;
+				if (neuron === this.masterNeuron) return;
+				this.masterNeuron.newSynapse(neuron, "inhibitory", false);
+				this.masterNeuron = null;
 			},
 			display: function () {
 				stroke(190, 0, 0);
-				if (this.masterNeuron != null) {
-					const distance = dist(
-						this.masterNeuron.x,
-						this.masterNeuron.y,
-						mouseX,
-						mouseY,
+				if (this.masterNeuron == null) return;
+				const distance = dist(
+					this.masterNeuron.x,
+					this.masterNeuron.y,
+					mouseX,
+					mouseY,
+				);
+				const normalizedX = (mouseX - this.masterNeuron.x) / distance;
+				const normalizedY = (mouseY - this.masterNeuron.y) / distance;
+				for (let i = 0; i < distance; i += 6) {
+					point(
+						this.masterNeuron.x + normalizedX * i,
+						this.masterNeuron.y + normalizedY * i,
 					);
-					const normalizedX = (mouseX - this.masterNeuron.x) / distance;
-					const normalizedY = (mouseY - this.masterNeuron.y) / distance;
-					for (let i = 0; i < distance; i += 6) {
-						point(
-							this.masterNeuron.x + normalizedX * i,
-							this.masterNeuron.y + normalizedY * i,
-						);
-					}
 				}
 			},
 			inactiveDisplay: () => {},
@@ -316,35 +290,31 @@ const app = {
 			},
 			lclick: function () {
 				const neuron = mouseOverNeuron();
-				if (neuron != null) {
-					if (this.masterNeuron == null) {
-						this.masterNeuron = neuron;
-					} else if (neuron !== this.masterNeuron) {
-						this.masterNeuron.newSynapse(neuron, "excitatory", true);
-						this.masterNeuron = null;
-					}
-				} else if (this.masterNeuron != null) {
+				if (neuron == null) {
+					this.masterNeuron = null;
+					return;
+				}
+				if (this.masterNeuron == null) {
+					this.masterNeuron = neuron;
+				} else if (neuron !== this.masterNeuron) {
+					this.masterNeuron.newSynapse(neuron, "excitatory", true);
 					this.masterNeuron = null;
 				}
 			},
 			rclick: () => {},
 			drag: () => {},
 			release: function () {
-				if (this.masterNeuron != null) {
-					const neuron = mouseOverNeuron();
-					if (neuron != null) {
-						if (neuron !== this.masterNeuron) {
-							this.masterNeuron.newSynapse(neuron, "excitatory", true);
-							this.masterNeuron = null;
-						}
-					}
-				}
+				if (this.masterNeuron == null) return;
+				const neuron = mouseOverNeuron();
+				if (neuron == null) return;
+				if (neuron === this.masterNeuron) return;
+				this.masterNeuron.newSynapse(neuron, "excitatory", true);
+				this.masterNeuron = null;
 			},
 			display: function () {
-				if (this.masterNeuron != null) {
-					stroke(0, 240, 0);
-					line(this.masterNeuron.x, this.masterNeuron.y, mouseX, mouseY);
-				}
+				if (this.masterNeuron == null) return;
+				stroke(0, 240, 0);
+				line(this.masterNeuron.x, this.masterNeuron.y, mouseX, mouseY);
 			},
 			inactiveDisplay: () => {},
 			img: "excitatory_dependent.png",
@@ -361,66 +331,38 @@ const app = {
 			},
 			lclick: function () {
 				const neuron = mouseOverNeuron();
-				if (neuron != null) {
-					if (this.masterNeuron == null) {
-						this.masterNeuron = neuron;
-					} else if (neuron !== this.masterNeuron) {
-						this.masterNeuron.newSynapse(neuron, "inhibitory", true);
-						this.masterNeuron = null;
-					}
-				} else if (this.masterNeuron != null) {
+				if (neuron == null) {
+					this.masterNeuron = null;
+					return;
+				}
+				if (this.masterNeuron == null) {
+					this.masterNeuron = neuron;
+				} else if (neuron !== this.masterNeuron) {
+					this.masterNeuron.newSynapse(neuron, "inhibitory", true);
 					this.masterNeuron = null;
 				}
 			},
 			rclick: () => {},
 			drag: () => {},
 			release: function () {
-				if (this.masterNeuron != null) {
-					const neuron = mouseOverNeuron();
-					if (neuron != null) {
-						if (neuron !== this.masterNeuron) {
-							this.masterNeuron.newSynapse(neuron, "inhibitory", true);
-							this.masterNeuron = null;
-						}
-					}
-				}
+				if (this.masterNeuron == null) return;
+				const neuron = mouseOverNeuron();
+				if (neuron == null) return;
+				if (neuron === this.masterNeuron) return;
+				this.masterNeuron.newSynapse(neuron, "inhibitory", true);
+				this.masterNeuron = null;
 			},
 			display: function () {
-				if (this.masterNeuron != null) {
-					stroke(240, 0, 0);
-					line(this.masterNeuron.x, this.masterNeuron.y, mouseX, mouseY);
-				}
+				if (this.masterNeuron == null) return;
+				stroke(240, 0, 0);
+				line(this.masterNeuron.x, this.masterNeuron.y, mouseX, mouseY);
 			},
 			inactiveDisplay: () => {},
 			img: "inhibitory_dependent.png",
 			buttonElement: undefined,
 
 			masterNeuron: null,
-		} /*
-        { // Inspect tool
-            name: "Inspect tool",
-            info: "Hover over a neuron to see info about it.",
-            activate: function() {},
-            lclick: function() {},
-            rclick: function() {},
-            drag: function() {},
-            release: function() {},
-            display: function() {
-                let neuron = mouseOverNeuron();
-                if (neuron !== null) {
-                    fill(20);
-                    stroke(240);
-                    rect(mouseX + 20, mouseY + 20, 220, 220);
-                    fill(240);
-                    noStroke();
-                    text("Number of axons: " + neuron.axons.length, mouseX + 25, mouseY + 25);
-                    text("Number of dendrites: " + neuron.dendrites.length, mouseX + 25, mouseY + 40);
-                }
-            },
-            inactiveDisplay: function() {},
-            img: "inspect.png",
-            buttonElement: undefined
-        },*/,
+		},
 		{
 			// Delete tool
 			name: "Delete tool",
@@ -477,22 +419,19 @@ const app = {
 	],
 	tool: 0,
 	switchTool: function (tool) {
-		if (tool >= 0 && tool < this.tools.length) {
-			if (tool !== this.tool) {
-				this.tools[this.tool].buttonElement.removeClass("selected");
-				this.tools[this.tool].buttonElement.addClass("unselected");
-				this.tool = tool;
-				this.tools[this.tool].buttonElement.removeClass("unselected");
-				this.tools[this.tool].buttonElement.addClass("selected");
-				this.tools[this.tool].activate();
-				return true;
-			}
-		}
-		return false;
+		if (tool < 0 || tool >= this.tools.length) return false;
+		if (tool === this.tool) return false;
+
+		this.tools[this.tool].buttonElement.removeClass("selected");
+		this.tools[this.tool].buttonElement.addClass("unselected");
+		this.tool = tool;
+		this.tools[this.tool].buttonElement.removeClass("unselected");
+		this.tools[this.tool].buttonElement.addClass("selected");
+		this.tools[this.tool].activate();
+		return true;
 	},
 };
 
-// Nevronklasse
 class Neuron {
 	constructor(ix, iy) {
 		this.x = ix;
@@ -585,15 +524,15 @@ class Neuron {
 	}
 
 	updatePulses() {
-		for (let i = 0; i < this.axons.length; ++i) {
-			this.axons[i].propagatePulses();
+		for (const synapse of this.axons) {
+			synapse.propagatePulses();
 		}
 	}
 
 	display() {
 		// Tegner synapser
-		for (let i = 0; i < this.axons.length; ++i) {
-			this.axons[i].display();
+		for (const synapse of this.axons) {
+			synapse.display();
 		}
 
 		// Tegner seg selv
@@ -609,33 +548,7 @@ class Neuron {
 		fill(20);
 		ellipse(this.x, this.y, app.neuronRadius * 2, app.neuronRadius * 2);
 
-		if (!this.spontaneousActivity) {
-			//Tegner indre sirkel som indikerer potensial-nivå
-			noStroke();
-			if (this.potential > 0) {
-				fill(0, 120, 0);
-				ellipse(
-					this.x,
-					this.y,
-					2 * app.neuronRadius * this.potentialCompletion,
-					2 * app.neuronRadius * this.potentialCompletion,
-				);
-			} else if (this.potential < 0) {
-				fill(120, 0, 0);
-				ellipse(
-					this.x,
-					this.y,
-					2 * app.neuronRadius * -this.potentialCompletion,
-					2 * app.neuronRadius * -this.potentialCompletion,
-				);
-			}
-			if (this.group) {
-				// Tegner sirkel som indikerer at nevronet er i en gruppe
-				stroke(240, 240, 0);
-				noFill();
-				ellipse(this.x, this.y, app.neuronRadius * 4, app.neuronRadius * 4);
-			}
-		} else {
+		if (this.spontaneousActivity) {
 			fill(240);
 			noStroke();
 			textAlign(CENTER, CENTER);
@@ -643,8 +556,32 @@ class Neuron {
 			text(`${this.frequency.toPrecision(2)}Hz`, this.x, this.y);
 			textAlign(LEFT, TOP);
 			textSize(12);
-			//ellipse(this.x, this.y, app.neuronRadius*1.6*abs(sin(PI*this.frequencyCounter/round(60/this.frequency))), app.neuronRadius*1.6*abs(sin(PI*this.frequencyCounter/round(60/this.frequency))));
+			return;
 		}
+		//Tegner indre sirkel som indikerer potensial-nivå
+		noStroke();
+		if (this.potential > 0) {
+			fill(0, 120, 0);
+			ellipse(
+				this.x,
+				this.y,
+				2 * app.neuronRadius * this.potentialCompletion,
+				2 * app.neuronRadius * this.potentialCompletion,
+			);
+		} else if (this.potential < 0) {
+			fill(120, 0, 0);
+			ellipse(
+				this.x,
+				this.y,
+				2 * app.neuronRadius * -this.potentialCompletion,
+				2 * app.neuronRadius * -this.potentialCompletion,
+			);
+		}
+		if (!this.group) return;
+		// Tegner sirkel som indikerer at nevronet er i en gruppe
+		stroke(240, 240, 0);
+		noFill();
+		ellipse(this.x, this.y, app.neuronRadius * 4, app.neuronRadius * 4);
 	}
 
 	inhibitoryFire() {
@@ -666,21 +603,15 @@ class Neuron {
 	newPulse() {
 		// Ganger varigheten (i sekunder) med framerate for at timingen skal bli riktig
 		//this.pulses.push(round(app.pulseDuration));
-		for (let i = 0; i < this.axons.length; ++i) {
-			this.axons[i].addPulse();
+		for (const synapse of this.axons) {
+			synapse.addPulse();
 		}
 		this.lastPulseTimestamp = millis();
 	}
 
 	isFiring() {
-		if (this.axons.length) {
-			for (let i = 0; i < this.axons.length; ++i) {
-				if (this.axons[i].pulses.length) {
-					return true;
-				}
-			}
-		}
-		return false;
+		if (!this.axons.length) return false;
+		return this.axons.some((synapse) => synapse.pulses.length > 0);
 	}
 
 	constrainPosition() {
@@ -701,22 +632,13 @@ class Neuron {
 	move(newX, newY) {
 		this.x = newX;
 		this.y = newY;
-		for (let i = 0; i < this.axons.length; ++i) {
-			this.axons[i].updateNeuronPosition();
+		for (const synapse of this.axons) {
+			synapse.updateNeuronPosition();
 		}
-		for (let i = 0; i < this.dendrites.length; ++i) {
-			this.dendrites[i].updateNeuronPosition();
+		for (const synapse of this.dendrites) {
+			synapse.updateNeuronPosition();
 		}
 		this.constrainPosition();
-	}
-
-	getId() {
-		for (let i = 0; i < app.neurons.length; ++i) {
-			if (app.neurons[i] === this) {
-				return i;
-			}
-		}
-		return -1;
 	}
 
 	newSynapse(slaveNeuron, type, lengthDependent) {
@@ -727,24 +649,20 @@ class Neuron {
 
 	delete() {
 		//fjerner alle aksoner
-		for (let i = this.axons.length - 1; i >= 0; --i) {
-			this.axons[i].delete();
+		for (const synapse of this.axons) {
+			synapse.delete();
 		}
 		// fjerner alle dendritter
-		for (let i = this.dendrites.length - 1; i >= 0; --i) {
-			this.dendrites[i].delete();
+		for (const synapse of this.dendrites) {
+			synapse.delete();
 		}
 		// Fjerner seg selv fra listen med nevroner
-		for (let i = 0; i < app.network.neurons.length; ++i) {
-			if (app.network.neurons[i] === this) {
-				app.network.neurons.splice(i, 1);
-				break;
-			}
-		}
+		app.network.neurons = app.network.neurons.filter(
+			(neuron) => neuron !== this,
+		);
 	}
 }
 
-// Synapseklasse
 class Synapse {
 	constructor(master, slave, type, lengthDependent) {
 		this.master = master;
@@ -765,50 +683,30 @@ class Synapse {
 	}
 
 	propagatePulses() {
-		for (let i = this.pulses.length - 1; i >= 0; --i) {
-			if (this.lengthDependent) {
-				// Avhengig av lengde
-				if (this.distance <= 0) {
-					this.pulses.splice(i, 1); // Fjern denne pulsen fra pulslisten
-					if (this.type === "excitatory") {
-						this.slave.excitatoryFire();
-					} else if (this.type === "inhibitory") {
-						this.slave.inhibitoryFire();
-					}
-				} else {
-					if (this.pulses[i] >= 1) {
-						this.pulses.splice(i, 1); // Fjern denne pulsen fra pulslisten
-						if (this.type === "excitatory") {
-							this.slave.excitatoryFire();
-						} else if (this.type === "inhibitory") {
-							this.slave.inhibitoryFire();
-						}
+		const isLengthDependent = this.lengthDependent;
+		const isExcitatory = this.type === "excitatory";
+		const distance = this.distance;
+		const dendriteNeuron = this.slave;
+		const deltaMillis = millis() - app.previousMillis;
+		const increment =
+			deltaMillis /
+			(isLengthDependent
+				? (1000 * distance) / app.network.pulseDistance
+				: app.network.pulseDuration);
+
+		this.pulses = this.pulses
+			.filter((pulse) => {
+				if ((isLengthDependent && distance <= 0) || pulse >= 1) {
+					if (isExcitatory) {
+						dendriteNeuron.excitatoryFire();
 					} else {
-						this.pulses[i] +=
-							(((millis() - app.previousMillis) / 1000) *
-								app.network.pulseDistance) /
-							this.distance;
+						dendriteNeuron.inhibitoryFire();
 					}
-					/*if ((millis() - this.pulses[i])/1000*app.network.pulseDistance >= this.distance - app.neuronRadius*2) {
-                        
-                    }*/
+					return false;
 				}
-			} else {
-				// Uavhengig av lengde
-				if (this.pulses[i] >= 1) {
-					this.pulses.splice(i, 1); // Fjern denne pulsen fra pulslisten
-					if (this.type === "excitatory") {
-						this.slave.excitatoryFire();
-					} else if (this.type === "inhibitory") {
-						this.slave.inhibitoryFire();
-					}
-				} else {
-					this.pulses[i] +=
-						(millis() - app.previousMillis) / app.network.pulseDuration;
-				}
-				//millis() - this.pulses[i] >= app.network.pulseDuration) {
-			}
-		}
+				return true;
+			})
+			.map((pulse) => pulse + increment);
 	}
 
 	updateNeuronPosition() {
@@ -824,6 +722,8 @@ class Synapse {
 	}
 
 	display() {
+		const paddedRadius = app.neuronRadius * 1.25;
+
 		// synapsen farges grønn hvis eksitatorisk, rød hvis inhibitorisk
 		if (this.type === "excitatory") {
 			stroke(0, 170, 0);
@@ -832,300 +732,110 @@ class Synapse {
 		}
 		noFill();
 
-		// Tegner synapsen
-		if (this.distance > 0) {
-			// gidder bare tegne hvis synapsen er lengre enn 0 pixler
-			if (this.lengthDependent) {
-				line(
-					this.master.x + this.normalizedX * app.neuronRadius * 1.25,
-					this.master.y + this.normalizedY * app.neuronRadius * 1.25,
-					this.slave.x - this.normalizedX * app.neuronRadius * 1.25,
-					this.slave.y - this.normalizedY * app.neuronRadius * 1.25,
-				);
-			} else {
-				for (
-					let i = app.neuronRadius;
-					i < this.distance + app.neuronRadius * 0.75;
-					i += 6
-				) {
-					point(
-						this.master.x + this.normalizedX * i,
-						this.master.y + this.normalizedY * i,
-					);
-				}
-			}
+		if (this.distance <= 0) return;
+		if (this.lengthDependent) {
 			line(
-				this.slave.x -
-					this.normalizedX * app.neuronRadius * 1.25 +
-					this.normalizedY * 6,
-				this.slave.y -
-					this.normalizedY * app.neuronRadius * 1.25 -
-					this.normalizedX * 6,
-				this.slave.x -
-					this.normalizedX * app.neuronRadius * 1.25 -
-					this.normalizedY * 6,
-				this.slave.y -
-					this.normalizedY * app.neuronRadius * 1.25 +
-					this.normalizedX * 6,
+				this.master.x + this.normalizedX * paddedRadius,
+				this.master.y + this.normalizedY * paddedRadius,
+				this.slave.x - this.normalizedX * paddedRadius,
+				this.slave.y - this.normalizedY * paddedRadius,
 			);
-
-			// Tegner pulsense som beveger seg over synapsen
-			stroke(240, 240, 0);
-			for (let i = 0; i < this.pulses.length; ++i) {
-				line(
-					this.master.x +
-						this.normalizedX *
-							(app.neuronRadius + this.pulses[i] * this.distance) +
-						this.normalizedY * 5,
-					this.master.y +
-						this.normalizedY *
-							(app.neuronRadius + this.pulses[i] * this.distance) -
-						this.normalizedX * 5,
-					this.master.x +
-						this.normalizedX *
-							(app.neuronRadius + this.pulses[i] * this.distance) -
-						this.normalizedY * 5,
-					this.master.y +
-						this.normalizedY *
-							(app.neuronRadius + this.pulses[i] * this.distance) +
-						this.normalizedX * 5,
+		} else {
+			for (
+				let i = app.neuronRadius;
+				i < this.distance + app.neuronRadius * 0.75;
+				i += 6
+			) {
+				point(
+					this.master.x + this.normalizedX * i,
+					this.master.y + this.normalizedY * i,
 				);
 			}
 		}
+		line(
+			this.slave.x - this.normalizedX * paddedRadius + this.normalizedY * 6,
+			this.slave.y - this.normalizedY * paddedRadius - this.normalizedX * 6,
+			this.slave.x - this.normalizedX * paddedRadius - this.normalizedY * 6,
+			this.slave.y - this.normalizedY * paddedRadius + this.normalizedX * 6,
+		);
 
-		//ellipse(this.slave.x - normalizedX*NEURON_RADIUS*1.5, this.slave.y - normalizedY*NEURON_RADIUS*1.5, 10, 10);
-		/*if (this.type) {
-            
-            line(this.slave.x - normalizedX*app.neuronRadius*1.5, this.slave.y - normalizedY*app.neuronRadius*1.5, this.slave.x - normalizedX*(app.neuronRadius*1.5 + 8) + normalizedY*15, this.slave.y - normalizedY*(app.neuronRadius*1.5 + 8) - normalizedX*15);
-            line(this.slave.x - normalizedX*app.neuronRadius*1.5, this.slave.y - normalizedY*app.neuronRadius*1.5, this.slave.x - normalizedX*(app.neuronRadius*1.5 + 8) - normalizedY*15, this.slave.y - normalizedY*(app.neuronRadius*1.5 + 8) + normalizedX*15);
-        } else {
-            line(this.slave.x - normalizedX*app.neuronRadius*1.5, this.slave.y - normalizedY*app.neuronRadius*1.5, this.slave.x - normalizedX*(app.neuronRadius*1.5 - 8) + normalizedY*15, this.slave.y - normalizedY*(app.neuronRadius*1.5 - 8) - normalizedX*15);
-            line(this.slave.x - normalizedX*app.neuronRadius*1.5, this.slave.y - normalizedY*app.neuronRadius*1.5, this.slave.x - normalizedX*(app.neuronRadius*1.5 - 8) - normalizedY*15, this.slave.y - normalizedY*(app.neuronRadius*1.5 - 8) + normalizedX*15);
-        }*/
+		// Tegner pulsense som beveger seg over synapsen
+		stroke(240, 240, 0);
+		for (const pulse of this.pulses) {
+			line(
+				this.master.x +
+					this.normalizedX * (app.neuronRadius + pulse * this.distance) +
+					this.normalizedY * 5,
+				this.master.y +
+					this.normalizedY * (app.neuronRadius + pulse * this.distance) -
+					this.normalizedX * 5,
+				this.master.x +
+					this.normalizedX * (app.neuronRadius + pulse * this.distance) -
+					this.normalizedY * 5,
+				this.master.y +
+					this.normalizedY * (app.neuronRadius + pulse * this.distance) +
+					this.normalizedX * 5,
+			);
+		}
 	}
 
 	delete() {
-		//fjerner referanse fra masternevrons aksonliste
-		for (let i = 0; i < this.master.axons.length; ++i) {
-			if (this.master.axons[i] === this) {
-				this.master.axons.splice(i, 1);
-			}
-		}
-		// fjerner referanse fra slavenevrons dendrittliste
-		for (let i = 0; i < this.slave.dendrites.length; ++i) {
-			if (this.slave.dendrites[i] === this) {
-				this.slave.dendrites.splice(i, 1);
-			}
-		}
+		this.master.axons = this.master.axons.filter((s) => s !== this);
+		this.master.dendrites = this.master.dendrites.filter((s) => s !== this);
 	}
 }
 
-// Methods
 function pointOverCircle(pointX, pointY, circleX, circleY, circleRadius) {
 	return sq(pointX - circleX) + sq(pointY - circleY) <= sq(circleRadius);
 }
 
+function pointOverLine(
+	lineStartX,
+	lineStartY,
+	lineEndX,
+	lineEndY,
+	lineThickness,
+	pointX,
+	pointY,
+) {
+	const lineAngle = atan2(lineEndY - lineStartY, lineEndX - lineStartX);
+	const pointAngle = atan2(pointY - lineStartY, pointX - lineStartX);
+	const lineLength = dist(lineStartX, lineStartY, lineEndX, lineEndY);
+	const pointLength = dist(lineStartX, lineStartY, pointX, pointY);
+	const relX = cos(pointAngle - lineAngle) * pointLength;
+	const relY = sin(pointAngle - lineAngle) * pointLength;
+	const radius = lineThickness / 2;
+
+	const isOverLine =
+		relX > radius && abs(relY) < radius && relX < lineLength - radius;
+	return isOverLine;
+}
+
 function mouseOverNeuron() {
-	for (let i = 0; i < app.network.neurons.length; ++i) {
-		if (
-			pointOverCircle(
-				mouseX,
-				mouseY,
-				app.network.neurons[i].x,
-				app.network.neurons[i].y,
-				app.neuronRadius,
-			)
-		) {
-			return app.network.neurons[i];
-		}
-	}
-	return null;
+	return (
+		app.network.neurons.find((neuron) =>
+			pointOverCircle(mouseX, mouseY, neuron.x, neuron.y, app.neuronRadius),
+		) || null
+	);
 }
 
 function mouseOverSynapse() {
-	let synapse;
-	let synapseAngle;
-	let mouseAngle;
-	let synapseDist;
-	let mouseDist;
-	let relX;
-	let relY;
-	// Går baklengs gjennom alle synapser for å velge de som ligger "øverst" først
-	for (let i = app.network.neurons.length - 1; i >= 0; --i) {
-		for (let j = app.network.neurons[i].axons.length - 1; j >= 0; --j) {
-			synapse = app.network.neurons[i].axons[j];
-			synapseAngle = atan2(
-				synapse.slave.y - synapse.master.y,
-				synapse.slave.x - synapse.master.x,
-			);
-			mouseAngle = atan2(mouseY - synapse.master.y, mouseX - synapse.master.x);
-			synapseDist = dist(
-				synapse.master.x,
-				synapse.master.y,
-				synapse.slave.x,
-				synapse.slave.y,
-			);
-			mouseDist = dist(synapse.master.x, synapse.master.y, mouseX, mouseY);
-			relX = cos(mouseAngle - synapseAngle) * mouseDist;
-			relY = sin(mouseAngle - synapseAngle) * mouseDist;
-			if (
-				relX > app.neuronRadius &&
-				abs(relY) < 10 &&
-				relX < synapseDist - app.neuronRadius
-			) {
-				return synapse;
-			}
-		}
-	}
-	return null;
+	return (
+		app.network.neurons
+			.flatMap((neuron) => neuron.axons)
+			.find((synapse) =>
+				pointOverLine(
+					synapse.master.x,
+					synapse.master.y,
+					synapse.slave.x,
+					synapse.slave.y,
+					20,
+					mouseX,
+					mouseY,
+				),
+			) || null
+	);
 }
-
-/*
-
-function saveNetwork() {
-    let save = {};
-    save.neurons0 = [];
-    for (let i = 0; i < neurons.length; ++i) {
-        let neuron = {
-            x: neurons[i].x,
-            y: neurons[i].y,
-            slaves: [],
-            dendriteType: []
-        };
-        for (let j = 0; j < neurons[i].axons.length; ++j) {
-            neuron.slaves.push(neurons[i].axons[j].slave.getId());
-            neuron.dendriteType.push(neurons[i].axons[j].type);
-        }
-        save.neurons0.push(neuron);
-    }
-
-    // Lagrer konstanter
-    save.potentialThreshold = potentialThreshold;
-    save.potentialPulseIncrement = potentialPulseIncrement;
-    save.potentialPulseDecrement = potentialPulseDecrement;
-    save.potentialLimit = potentialLimit;
-    save.pulseDuration = pulseDuration; // sekunder * framerate
-    save.baseFrequency = baseFrequency; // Hz
-    save.frequencyStabilize = frequencyStabilize; // Hz/s
-    save.frequencyIncrement = frequencyIncrement;
-    save.frequencyDecrement = frequencyDecrement;
-    save.decayMode = decayMode;
-    save.exponentialDecayTargetSeconds = exponentialDecayTargetSeconds;    
-    save.linearDecayPotentialPerSec = linearDecayPotentialPerSec;
-
-    save = JSON.stringify(save);
-
-    if (confirm("This will override the current save!")) {
-        if (typeof (Storage) !== undefined) {
-            localStorage.save = save;
-        } else {
-            return false;
-        }
-    } else {
-        return false;
-    }
-    return true;
-}
-
-function loadNetwork() {
-    if (typeof (Storage) !== undefined) {
-        // migrerer gammel save
-        if (localStorage.save0 === undefined) {
-            migrateSave();
-        }
-        
-        if (localStorage.save0 !== undefined) {
-            if (neurons.length) {
-                if (!confirm("Are you sure? All your current work will be lost!")) {
-                    return false;
-                }
-            }
-
-            let saveObj = JSON.parse(localStorage.save0);
-
-            //tømmer det eksisterende nettverket
-            for (let i = neurons.length - 1; i >= 0; --i) {
-                neurons[i].delete();
-            }
-
-            // lager nevroner fra lagringsfil
-            for (let i = 0; i < saveObj.neurons.length; ++i) {
-                neurons.push(new Neuron(saveObj.neurons[i].x, saveObj.neurons[i].y));
-            }
-            // lager synapser
-            for (let i = 0; i < saveObj.neurons.length; ++i) {
-                for (let j = 0; j < saveObj.neurons[i].slaves.length; ++j) {
-                    new Synapse(neurons[i], neurons[saveObj.neurons[i].slaves[j]], saveObj.neurons[i].dendriteType[j]);
-                }
-            }
-
-            //laster inn lagrede konstanter
-            potentialThreshold = saveObj.potentialThreshold;
-            potentialPulseIncrement = saveObj.potentialPulseIncrement;
-            potentialPulseDecrement = saveObj.potentialPulseDecrement;
-            potentialLimit = saveObj.potentialLimit;
-            pulseDuration = saveObj.pulseDuration; // sekunder * framerate
-            baseFrequency = saveObj.baseFrequency; // Hz
-            frequencyStabilize = saveObj.frequencyStabilize; // Hz/s
-            frequencyIncrement = saveObj.frequencyIncrement;
-            frequencyDecrement = saveObj.frequencyDecrement;
-            decayMode = saveObj.decayMode;
-            exponentialDecayTargetSeconds = saveObj.exponentialDecayTargetSeconds;    
-            linearDecayPotentialPerSec = saveObj.linearDecayPotentialPerSec;
-        } else {
-            return false;
-        }
-    } else {
-        return false;
-    }
-    return true;
-};
-
-function getSaveInfo() {
-    if (typeof (Storage) !== undefined) {
-        if (localStorage.save0 !== undefined) {
-            let saveObj = JSON.parse(localStorage.save0);
-            let neuronNum = saveObj.neurons.length;
-            let synapseNum = 0;
-            for (let i = 0; i < saveObj.neurons.length; ++i) {
-                synapseNum += saveObj.neurons[i].slaves.length;
-            }
-            return (neuronNum + " neurons, " + synapseNum + " synapses.");
-        } else {
-            return false;
-        }
-    } else {
-        return false;
-    }
-};
-
-function migrateSave() {
-    if (typeof(Storage) !== undefined) {
-        if (localStorage.save !== undefined) {
-            localStorage.save0 = localStorage.save;
-            localStorage.save = undefined;
-            let saveObj = JSON.parse(localStorage.save0);
-            saveObj.neurons = saveObj.neurons0;                
-            saveObj.neurons0 = undefined;
-            saveObj.potentialThreshold = potentialThreshold;
-            saveObj.potentialPulseIncrement = potentialPulseIncrement;
-            saveObj.potentialPulseDecrement = potentialPulseDecrement;
-            saveObj.potentialLimit = potentialLimit;
-            saveObj.pulseDuration = pulseDuration; // sekunder * framerate
-            saveObj.baseFrequency = baseFrequency; // Hz
-            saveObj.frequencyStabilize = frequencyStabilize; // Hz/s
-            saveObj.frequencyIncrement = frequencyIncrement;
-            saveObj.frequencyDecrement = frequencyDecrement;
-            saveObj.decayMode = decayMode;
-            saveObj.exponentialDecayTargetSeconds = exponentialDecayTargetSeconds;    
-            saveObj.linearDecayPotentialPerSec = linearDecayPotentialPerSec;
-
-            localStorage.save0 = JSON.stringify(saveObj);
-            console.log("Old save migrated.");
-        }
-    }
-};
-*/
 
 function getExponentialDecayBase() {
 	return Math.exp(Math.log(0.01) / 60 / exponentialDecayTargetSeconds);
@@ -1169,44 +879,26 @@ function setup() {
 
 	textSize(14);
 	textAlign(LEFT, TOP);
-
-	/*
-    app.network.neurons.push(new Neuron(100, 400));
-    app.network.neurons.push(new Neuron(200, 150));
-    app.network.neurons.push(new Neuron(200, 800));
-    app.network.neurons.push(new Neuron(600, 800));
-    app.network.neurons.push(new Neuron(300, 400));
-    
-    app.network.neurons[0].newSynapse(app.network.neurons[1], "excitatory", true);
-    app.network.neurons[0].newSynapse(app.network.neurons[2], "inhibitory", true);
-    app.network.neurons[0].newSynapse(app.network.neurons[3], "inhibitory", false);
-    app.network.neurons[0].newSynapse(app.network.neurons[4], "excitatory", false);
-    app.network.neurons[1].newSynapse(app.network.neurons[2], "excitatory", false);
-    */
 }
 
 function draw() {
 	background(20);
 
-	if (!app.showPreferences) {
-		if (app.network.neurons.length > 0) {
-			// Oppdaterer pulser
-			for (let i = 0; i < app.network.neurons.length; ++i) {
-				app.network.neurons[i].updatePulses();
-			}
-			// Oppdaterer potensialet og tegner nevroner + aksoner
-			for (let i = 0; i < app.network.neurons.length; ++i) {
-				app.network.neurons[i].updatePotential();
-				app.network.neurons[i].display();
-			}
-		}
-		// Tegner grafikk fra verktøy
-		for (let i = 0; i < app.tools.length; ++i) {
-			if (i === app.tool) {
-				app.tools[i].display();
-			} else {
-				app.tools[i].inactiveDisplay();
-			}
+	// Oppdaterer pulser
+	for (const neuron of app.network.neurons) {
+		neuron.updatePulses();
+	}
+	// Oppdaterer potensialet og tegner nevroner + aksoner
+	for (const neuron of app.network.neurons) {
+		neuron.updatePotential();
+		neuron.display();
+	}
+	// Tegner grafikk fra verktøy
+	for (let i = 0; i < app.tools.length; ++i) {
+		if (i === app.tool) {
+			app.tools[i].display();
+		} else {
+			app.tools[i].inactiveDisplay();
 		}
 	}
 
@@ -1221,9 +913,7 @@ function draw() {
 }
 
 function keyPressed() {
-	// skrur av de fleste knapper når man er inne i innstillinger
 	if (keyCode >= 49 && keyCode <= 57) {
-		// 1 2 3 4 5 6 7 8 9
 		app.switchTool(keyCode - 49);
 	}
 }
@@ -1256,10 +946,9 @@ function mouseInsideWorkspace() {
 
 function updateWorkspaceSize() {
 	// sjekker at ingen nevroner havner på utsiden av vinduet
-	for (let i = 0; i < app.network.neurons.length; ++i) {
-		app.network.neurons[i].constrainPosition();
+	for (const neuron of app.network.neurons) {
+		neuron.constrainPosition();
 	}
-	// endrer størrelsen på canvas
 	resizeCanvas(window.innerWidth, window.innerHeight - app.toolBannerHeight);
 }
 
