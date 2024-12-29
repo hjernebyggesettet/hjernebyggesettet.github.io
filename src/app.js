@@ -33,6 +33,36 @@ class Network {
 			synapse.update(deltaSeconds);
 		}
 	}
+
+	addNeuron(x, y, isSpontaneouslyActive) {
+		this.neurons.push(new Neuron(x, y, isSpontaneouslyActive));
+	}
+
+	deleteNeuron(neuronToBeDeleted) {
+		for (const synapse of neuronToBeDeleted.axons) {
+			this.deleteSynapse(synapse);
+		}
+		for (const synapse of neuronToBeDeleted.dendrites) {
+			this.deleteSynapse(synapse);
+		}
+		this.neurons = this.neurons.filter(
+			(neuron) => neuron !== neuronToBeDeleted,
+		);
+	}
+
+	addSynapse(axonNeuron, dendriteNeuron, isExcitatory, isLengthDependent) {
+		axonNeuron.newSynapse(dendriteNeuron, isExcitatory, isLengthDependent);
+	}
+
+	deleteSynapse(synapseToBeDeleted) {
+		synapseToBeDeleted.axon.axons = synapseToBeDeleted.axon.axons.filter(
+			(synapse) => synapse !== synapseToBeDeleted,
+		);
+		synapseToBeDeleted.axon.dendrites =
+			synapseToBeDeleted.axon.dendrites.filter(
+				(synapse) => synapse !== synapseToBeDeleted,
+			);
+	}
 }
 
 const app = {
@@ -163,12 +193,10 @@ const app = {
 			info: "Left click to create a neuron.\nRight click to create a neuron with a base frequency.",
 			activate: () => {},
 			lclick: () => {
-				app.network.neurons.push(new Neuron(mouseX, mouseY));
+				app.network.addNeuron(mouseX, mouseY, false);
 			},
 			rclick: () => {
-				const neuron = new Neuron(mouseX, mouseY);
-				neuron.spontaneousActivity = true;
-				app.network.neurons.push(neuron);
+				app.network.addNeuron(mouseX, mouseY, true);
 			},
 			drag: () => {},
 			release: () => {},
@@ -197,7 +225,7 @@ const app = {
 				if (this.axonNeuron == null) {
 					this.axonNeuron = neuron;
 				} else if (neuron !== this.axonNeuron) {
-					this.axonNeuron.newSynapse(neuron, true, false);
+					app.network.addSynapse(this.axonNeuron, neuron, true, false);
 					this.axonNeuron = null;
 				}
 			},
@@ -208,7 +236,7 @@ const app = {
 				const neuron = mouseOverNeuron();
 				if (neuron == null) return;
 				if (neuron === this.axonNeuron) return;
-				this.axonNeuron.newSynapse(neuron, true, false);
+				app.network.addSynapse(this.axonNeuron, neuron, true, false);
 				this.axonNeuron = null;
 			},
 			display: function () {
@@ -251,7 +279,7 @@ const app = {
 				if (this.axonNeuron == null) {
 					this.axonNeuron = neuron;
 				} else if (neuron !== this.axonNeuron) {
-					this.axonNeuron.newSynapse(neuron, false, false);
+					app.network.addSynapse(this.axonNeuron, neuron, false, false);
 					this.axonNeuron = null;
 				}
 			},
@@ -262,7 +290,7 @@ const app = {
 				const neuron = mouseOverNeuron();
 				if (neuron == null) return;
 				if (neuron === this.axonNeuron) return;
-				this.axonNeuron.newSynapse(neuron, false, false);
+				app.network.addSynapse(this.axonNeuron, neuron, false, false);
 				this.axonNeuron = null;
 			},
 			display: function () {
@@ -305,7 +333,7 @@ const app = {
 				if (this.axonNeuron == null) {
 					this.axonNeuron = neuron;
 				} else if (neuron !== this.axonNeuron) {
-					this.axonNeuron.newSynapse(neuron, true, true);
+					app.network.addSynapse(this.axonNeuron, neuron, true, true);
 					this.axonNeuron = null;
 				}
 			},
@@ -316,7 +344,7 @@ const app = {
 				const neuron = mouseOverNeuron();
 				if (neuron == null) return;
 				if (neuron === this.axonNeuron) return;
-				this.axonNeuron.newSynapse(neuron, true, true);
+				app.network.addSynapse(this.axonNeuron, neuron, true, true);
 				this.axonNeuron = null;
 			},
 			display: function () {
@@ -346,7 +374,7 @@ const app = {
 				if (this.axonNeuron == null) {
 					this.axonNeuron = neuron;
 				} else if (neuron !== this.axonNeuron) {
-					this.axonNeuron.newSynapse(neuron, false, true);
+					app.network.addSynapse(this.axonNeuron, neuron, false, true);
 					this.axonNeuron = null;
 				}
 			},
@@ -357,7 +385,7 @@ const app = {
 				const neuron = mouseOverNeuron();
 				if (neuron == null) return;
 				if (neuron === this.axonNeuron) return;
-				this.axonNeuron.newSynapse(neuron, false, true);
+				app.network.addSynapse(this.axonNeuron, neuron, false, true);
 				this.axonNeuron = null;
 			},
 			display: function () {
@@ -377,17 +405,13 @@ const app = {
 			info: "Click neurons or synapses to delete them.",
 			activate: () => {},
 			lclick: () => {
-				let neuron = mouseOverNeuron();
+				const neuron = mouseOverNeuron();
 				if (neuron != null) {
-					//sletter nevron
-					neuron.delete();
-					neuron = null;
+					app.network.deleteNeuron(neuron);
 				} else {
-					let synapse = mouseOverSynapse();
+					const synapse = mouseOverSynapse();
 					if (synapse != null) {
-						// sletter synapse
-						synapse.delete();
-						synapse = null;
+						app.network.deleteSynapse(synapse);
 					}
 				}
 			},
@@ -441,14 +465,14 @@ const app = {
 };
 
 class Neuron {
-	constructor(ix, iy) {
+	constructor(ix, iy, isSpontaneouslyActive) {
 		this.x = ix;
 		this.y = iy;
 		this.potential = 0;
 		this.potentialCompletion = 0;
 		this.lastPulseTimestamp = -PULSE_LIGHT_DURATION * 1000;
 
-		this.spontaneousActivity = false;
+		this.spontaneousActivity = isSpontaneouslyActive;
 		this.frequency = FREQUENCY_BASE;
 		this.frequencyCounter = this.frequency * 60;
 
@@ -607,21 +631,6 @@ class Neuron {
 		this.axons.push(newSynapse);
 		dendriteNeuron.dendrites.push(newSynapse);
 	}
-
-	delete() {
-		//fjerner alle aksoner
-		for (const synapse of this.axons) {
-			synapse.delete();
-		}
-		// fjerner alle dendritter
-		for (const synapse of this.dendrites) {
-			synapse.delete();
-		}
-		// Fjerner seg selv fra listen med nevroner
-		app.network.neurons = app.network.neurons.filter(
-			(neuron) => neuron !== this,
-		);
-	}
 }
 
 class Synapse {
@@ -739,11 +748,6 @@ class Synapse {
 					this.normalizedX * 5,
 			);
 		}
-	}
-
-	delete() {
-		this.axon.axons = this.axon.axons.filter((s) => s !== this);
-		this.axon.dendrites = this.axon.dendrites.filter((s) => s !== this);
 	}
 }
 
