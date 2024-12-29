@@ -15,14 +15,28 @@ const PULSE_LIGHT_DURATION = 2; // s
 const NEURON_RADIUS = 20;
 const TOOL_BANNER_HEIGHT = 40;
 
+function linearConverge(current, target, decay) {
+	const delta = target - current;
+	const deltaSign = Math.sign(delta);
+	return target - Math.max(0, Math.abs(delta) - decay) * deltaSign;
+}
+
 class Network {
 	/** @type {Neuron[]} */
 	neurons = [];
+
+	update(deltaSeconds) {
+		for (const neuron of this.neurons) {
+			neuron.update(deltaSeconds);
+		}
+		for (const synapse of this.neurons.flatMap((neuron) => neuron.axons)) {
+			synapse.update(deltaSeconds);
+		}
+	}
 }
 
 const app = {
 	network: new Network(),
-	previousMillis: 0, // Tellevarabel, holder på antall millisekunder fra forrige frame til nåværende
 	workspace: undefined,
 	toolBanner: undefined,
 
@@ -445,50 +459,33 @@ class Neuron {
 		this.pulses = [];
 	}
 
-	updatePotential() {
+	update(deltaSeconds) {
 		if (this.spontaneousActivity) {
 			this.frequency = Math.max(0, Math.min(FREQUENCY_LIMIT, this.frequency));
 
-			// Fyrer med riktig frekvens hvis nevronet har egenfrekvens
-			if (this.frequencyCounter < round(60 / this.frequency)) {
-				++this.frequencyCounter;
+			if (this.frequencyCounter < round(1 / (this.frequency * deltaSeconds))) {
+				this.frequencyCounter++;
 			} else {
 				this.newPulse();
 				this.frequencyCounter = 0;
 			}
 
-			// Stabiliserer frekvensen
-			if (this.frequency > FREQUENCY_BASE) {
-				this.frequency -= FREQUENCY_DECAY / 60;
-				if (this.frequency < FREQUENCY_BASE) {
-					this.frequency = FREQUENCY_BASE;
-				}
-			} else if (this.frequency < FREQUENCY_BASE) {
-				this.frequency += FREQUENCY_DECAY / 60;
-				if (this.frequency > FREQUENCY_BASE) {
-					this.frequency = FREQUENCY_BASE;
-				}
-			}
+			this.frequency = linearConverge(
+				this.frequency,
+				FREQUENCY_BASE,
+				FREQUENCY_DECAY * deltaSeconds,
+			);
 		} else {
 			this.potential = Math.max(
 				-POTENTIAL_LIMIT,
 				Math.min(POTENTIAL_LIMIT, this.potential),
 			);
 
-			// Får potensialet til å nærme seg hvilepotensialet (0)
-			if (this.potential > 0) {
-				this.potential -=
-					(POTENTIAL_DECAY * (millis() - app.previousMillis)) / 1000;
-				if (this.potential < 0) {
-					this.potential = 0;
-				}
-			} else if (this.potential < 0) {
-				this.potential +=
-					(POTENTIAL_DECAY * (millis() - app.previousMillis)) / 1000;
-				if (this.potential > 0) {
-					this.potential = 0;
-				}
-			}
+			this.potential = linearConverge(
+				this.potential,
+				0,
+				POTENTIAL_DECAY * deltaSeconds,
+			);
 
 			this.potentialCompletion = constrain(
 				this.potential / POTENTIAL_THRESHOLD,
@@ -511,12 +508,6 @@ class Neuron {
 			// fyrer
 			this.newPulse();
 			this.potential = -POTENTIAL_DECAY;
-		}
-	}
-
-	updatePulses() {
-		for (const synapse of this.axons) {
-			synapse.propagatePulses();
 		}
 	}
 
@@ -553,21 +544,13 @@ class Neuron {
 		noStroke();
 		if (this.potential > 0) {
 			fill(0, 120, 0);
-			ellipse(
-				this.x,
-				this.y,
-				2 * NEURON_RADIUS * this.potentialCompletion,
-				2 * NEURON_RADIUS * this.potentialCompletion,
-			);
 		} else if (this.potential < 0) {
 			fill(120, 0, 0);
-			ellipse(
-				this.x,
-				this.y,
-				2 * NEURON_RADIUS * -this.potentialCompletion,
-				2 * NEURON_RADIUS * -this.potentialCompletion,
-			);
 		}
+		const completionRadius =
+			2 * NEURON_RADIUS * Math.abs(this.potentialCompletion);
+		ellipse(this.x, this.y, completionRadius, completionRadius);
+
 		if (!this.group) return;
 		// Tegner sirkel som indikerer at nevronet er i en gruppe
 		stroke(240, 240, 0);
@@ -655,15 +638,13 @@ class Synapse {
 		this.pulses.push(0);
 	}
 
-	propagatePulses() {
+	update(deltaSeconds) {
 		const isLengthDependent = this.lengthDependent;
 		const isExcitatory = this.type === "excitatory";
 		const distance = this.distance;
 		const dendriteNeuron = this.slave;
-		const deltaMillis = millis() - app.previousMillis;
 		const increment =
-			deltaMillis /
-			1000 /
+			deltaSeconds /
 			(isLengthDependent
 				? distance / PULSE_LENGTH_INDEPENDENT_SPEED
 				: PULSE_DURATION);
@@ -815,6 +796,8 @@ function getLinearDecayCoefficient() {
 	return linearDecayPotentialPerSec / 60;
 }
 
+let previousMillis = 0;
+
 function setup() {
 	// Skrur av høyreklikk-menyen
 	document.body.oncontextmenu = () => false;
@@ -852,15 +835,12 @@ function setup() {
 }
 
 function draw() {
+	const deltaSeconds = (millis() - previousMillis) / 1000;
+	app.network.update(deltaSeconds);
+
 	background(20);
 
-	// Oppdaterer pulser
 	for (const neuron of app.network.neurons) {
-		neuron.updatePulses();
-	}
-	// Oppdaterer potensialet og tegner nevroner + aksoner
-	for (const neuron of app.network.neurons) {
-		neuron.updatePotential();
 		neuron.display();
 	}
 	// Tegner grafikk fra verktøy
@@ -879,7 +859,7 @@ function draw() {
 		fill(180);
 		text(app.tools[app.tool].info, 10, 28);
 	}
-	app.previousMillis = millis();
+	previousMillis = millis();
 }
 
 function keyPressed() {
