@@ -186,46 +186,46 @@ const app = {
 			name: "Length independent excitatory synapse tool",
 			info: "Click a neuron to start making a synapse, and then click another one to complete it.",
 			activate: function () {
-				this.masterNeuron = null;
+				this.axonNeuron = null;
 			},
 			lclick: function () {
 				const neuron = mouseOverNeuron();
 				if (neuron == null) {
-					this.masterNeuron = null;
+					this.axonNeuron = null;
 					return;
 				}
-				if (this.masterNeuron == null) {
-					this.masterNeuron = neuron;
-				} else if (neuron !== this.masterNeuron) {
-					this.masterNeuron.newSynapse(neuron, "excitatory", false);
-					this.masterNeuron = null;
+				if (this.axonNeuron == null) {
+					this.axonNeuron = neuron;
+				} else if (neuron !== this.axonNeuron) {
+					this.axonNeuron.newSynapse(neuron, true, false);
+					this.axonNeuron = null;
 				}
 			},
 			rclick: () => {},
 			drag: () => {},
 			release: function () {
-				if (this.masterNeuron == null) return;
+				if (this.axonNeuron == null) return;
 				const neuron = mouseOverNeuron();
 				if (neuron == null) return;
-				if (neuron === this.masterNeuron) return;
-				this.masterNeuron.newSynapse(neuron, "excitatory", false);
-				this.masterNeuron = null;
+				if (neuron === this.axonNeuron) return;
+				this.axonNeuron.newSynapse(neuron, true, false);
+				this.axonNeuron = null;
 			},
 			display: function () {
 				stroke(0, 240, 0);
-				if (this.masterNeuron == null) return;
+				if (this.axonNeuron == null) return;
 				const distance = dist(
-					this.masterNeuron.x,
-					this.masterNeuron.y,
+					this.axonNeuron.x,
+					this.axonNeuron.y,
 					mouseX,
 					mouseY,
 				);
-				const normalizedX = (mouseX - this.masterNeuron.x) / distance;
-				const normalizedY = (mouseY - this.masterNeuron.y) / distance;
+				const normalizedX = (mouseX - this.axonNeuron.x) / distance;
+				const normalizedY = (mouseY - this.axonNeuron.y) / distance;
 				for (let i = 0; i < distance; i += 6) {
 					point(
-						this.masterNeuron.x + normalizedX * i,
-						this.masterNeuron.y + normalizedY * i,
+						this.axonNeuron.x + normalizedX * i,
+						this.axonNeuron.y + normalizedY * i,
 					);
 				}
 			},
@@ -233,53 +233,53 @@ const app = {
 			img: "excitatory_independent.png",
 			buttonElement: undefined,
 
-			masterNeuron: null,
+			axonNeuron: null,
 		},
 		{
 			// Inhibitory synapse tool
 			name: "Length independent inhibitory synapse tool",
 			info: "Click a neuron to start making an synapse, and then click another one to complete it.",
 			activate: function () {
-				this.masterNeuron = null;
+				this.axonNeuron = null;
 			},
 			lclick: function () {
 				const neuron = mouseOverNeuron();
 				if (neuron == null) {
-					this.masterNeuron = null;
+					this.axonNeuron = null;
 					return;
 				}
-				if (this.masterNeuron == null) {
-					this.masterNeuron = neuron;
-				} else if (neuron !== this.masterNeuron) {
-					this.masterNeuron.newSynapse(neuron, "inhibitory", false);
-					this.masterNeuron = null;
+				if (this.axonNeuron == null) {
+					this.axonNeuron = neuron;
+				} else if (neuron !== this.axonNeuron) {
+					this.axonNeuron.newSynapse(neuron, false, false);
+					this.axonNeuron = null;
 				}
 			},
 			rclick: () => {},
 			drag: () => {},
 			release: function () {
-				if (this.masterNeuron == null) return;
+				if (this.axonNeuron == null) return;
 				const neuron = mouseOverNeuron();
 				if (neuron == null) return;
-				if (neuron === this.masterNeuron) return;
-				this.masterNeuron.newSynapse(neuron, "inhibitory", false);
-				this.masterNeuron = null;
+				if (neuron === this.axonNeuron) return;
+				this.axonNeuron.newSynapse(neuron, false, false);
+				this.axonNeuron = null;
 			},
 			display: function () {
 				stroke(190, 0, 0);
-				if (this.masterNeuron == null) return;
+				if (this.axonNeuron == null) return;
 				const distance = dist(
-					this.masterNeuron.x,
-					this.masterNeuron.y,
+					this.axonNeuron.x,
+					this.axonNeuron.y,
 					mouseX,
 					mouseY,
 				);
-				const normalizedX = (mouseX - this.masterNeuron.x) / distance;
-				const normalizedY = (mouseY - this.masterNeuron.y) / distance;
+				const normalizedX = (mouseX - this.axonNeuron.x) / distance;
+				const normalizedY = (mouseY - this.axonNeuron.y) / distance;
 				for (let i = 0; i < distance; i += 6) {
 					point(
-						this.masterNeuron.x + normalizedX * i,
-						this.masterNeuron.y + normalizedY * i,
+						this.axonNeuron.x + normalizedX * i,
+						this.axonNeuron.y + normalizedY * i,
 					);
 				}
 			},
@@ -287,89 +287,89 @@ const app = {
 			img: "inhibitory_independent.png",
 			buttonElement: undefined,
 
-			masterNeuron: null,
+			axonNeuron: null,
 		},
 		{
 			// Excitatory dependent synapse tool
 			name: "Excitatory synapse tool",
 			info: "Click a neuron to start making a synapse, and then click another one to complete it.",
 			activate: function () {
-				this.masterNeuron = null;
+				this.axonNeuron = null;
 			},
 			lclick: function () {
 				const neuron = mouseOverNeuron();
 				if (neuron == null) {
-					this.masterNeuron = null;
+					this.axonNeuron = null;
 					return;
 				}
-				if (this.masterNeuron == null) {
-					this.masterNeuron = neuron;
-				} else if (neuron !== this.masterNeuron) {
-					this.masterNeuron.newSynapse(neuron, "excitatory", true);
-					this.masterNeuron = null;
+				if (this.axonNeuron == null) {
+					this.axonNeuron = neuron;
+				} else if (neuron !== this.axonNeuron) {
+					this.axonNeuron.newSynapse(neuron, true, true);
+					this.axonNeuron = null;
 				}
 			},
 			rclick: () => {},
 			drag: () => {},
 			release: function () {
-				if (this.masterNeuron == null) return;
+				if (this.axonNeuron == null) return;
 				const neuron = mouseOverNeuron();
 				if (neuron == null) return;
-				if (neuron === this.masterNeuron) return;
-				this.masterNeuron.newSynapse(neuron, "excitatory", true);
-				this.masterNeuron = null;
+				if (neuron === this.axonNeuron) return;
+				this.axonNeuron.newSynapse(neuron, true, true);
+				this.axonNeuron = null;
 			},
 			display: function () {
-				if (this.masterNeuron == null) return;
+				if (this.axonNeuron == null) return;
 				stroke(0, 240, 0);
-				line(this.masterNeuron.x, this.masterNeuron.y, mouseX, mouseY);
+				line(this.axonNeuron.x, this.axonNeuron.y, mouseX, mouseY);
 			},
 			inactiveDisplay: () => {},
 			img: "excitatory_dependent.png",
 			buttonElement: undefined,
 
-			masterNeuron: null,
+			axonNeuron: null,
 		},
 		{
 			// Inhibiory dependent synapse tool
 			name: "Inhibitory synapse tool",
 			info: "Click a neuron to start making a synapse, and then click another one to complete it.",
 			activate: function () {
-				this.masterNeuron = null;
+				this.axonNeuron = null;
 			},
 			lclick: function () {
 				const neuron = mouseOverNeuron();
 				if (neuron == null) {
-					this.masterNeuron = null;
+					this.axonNeuron = null;
 					return;
 				}
-				if (this.masterNeuron == null) {
-					this.masterNeuron = neuron;
-				} else if (neuron !== this.masterNeuron) {
-					this.masterNeuron.newSynapse(neuron, "inhibitory", true);
-					this.masterNeuron = null;
+				if (this.axonNeuron == null) {
+					this.axonNeuron = neuron;
+				} else if (neuron !== this.axonNeuron) {
+					this.axonNeuron.newSynapse(neuron, false, true);
+					this.axonNeuron = null;
 				}
 			},
 			rclick: () => {},
 			drag: () => {},
 			release: function () {
-				if (this.masterNeuron == null) return;
+				if (this.axonNeuron == null) return;
 				const neuron = mouseOverNeuron();
 				if (neuron == null) return;
-				if (neuron === this.masterNeuron) return;
-				this.masterNeuron.newSynapse(neuron, "inhibitory", true);
-				this.masterNeuron = null;
+				if (neuron === this.axonNeuron) return;
+				this.axonNeuron.newSynapse(neuron, false, true);
+				this.axonNeuron = null;
 			},
 			display: function () {
-				if (this.masterNeuron == null) return;
+				if (this.axonNeuron == null) return;
 				stroke(240, 0, 0);
-				line(this.masterNeuron.x, this.masterNeuron.y, mouseX, mouseY);
+				line(this.axonNeuron.x, this.axonNeuron.y, mouseX, mouseY);
 			},
 			inactiveDisplay: () => {},
 			img: "inhibitory_dependent.png",
 			buttonElement: undefined,
 
-			masterNeuron: null,
+			axonNeuron: null,
 		},
 		{
 			// Delete tool
@@ -597,10 +597,15 @@ class Neuron {
 		this.constrainPosition();
 	}
 
-	newSynapse(slaveNeuron, type, lengthDependent) {
-		const newSynapse = new Synapse(this, slaveNeuron, type, lengthDependent);
+	newSynapse(dendriteNeuron, isExcitatory, isLengthDependent) {
+		const newSynapse = new Synapse(
+			this,
+			dendriteNeuron,
+			isExcitatory,
+			isLengthDependent,
+		);
 		this.axons.push(newSynapse);
-		slaveNeuron.dendrites.push(newSynapse);
+		dendriteNeuron.dendrites.push(newSynapse);
 	}
 
 	delete() {
@@ -620,18 +625,29 @@ class Neuron {
 }
 
 class Synapse {
-	constructor(master, slave, type, lengthDependent) {
-		this.master = master;
-		this.slave = slave;
-		this.type = type; // 'excitatory' eller 'inhibitory'
-		this.lengthDependent = lengthDependent; // Om signalene som sendes gjennom sypapsen skal ta hensyn til lengden på synapsen eller ikke
+	/** @type {Neuron} */
+	axon;
+	/** @type {Neuron} */
+	dendrite;
+	/** @type {boolean} */
+	isExcitatory;
+	/** @type {boolean} */
+	isLengthDependent;
 
-		this.distance = 0;
-		this.normalizedX = 0;
-		this.normalizedY = 0;
+	distance = 0;
+	normalizedX = 0;
+	normalizedY = 0;
+
+	/** @type {number[]} */
+	pulses = [];
+
+	constructor(axon, dendrite, isExcitatory, isLengthDependent) {
+		this.axon = axon;
+		this.dendrite = dendrite;
+		this.isExcitatory = isExcitatory;
+		this.isLengthDependent = isLengthDependent;
+
 		this.updateNeuronPosition();
-
-		this.pulses = [];
 	}
 
 	addPulse() {
@@ -639,20 +655,16 @@ class Synapse {
 	}
 
 	update(deltaSeconds) {
-		const isLengthDependent = this.lengthDependent;
-		const isExcitatory = this.type === "excitatory";
-		const distance = this.distance;
-		const dendriteNeuron = this.slave;
 		const increment =
 			deltaSeconds /
-			(isLengthDependent
-				? distance / PULSE_LENGTH_INDEPENDENT_SPEED
+			(this.isLengthDependent
+				? this.distance / PULSE_LENGTH_INDEPENDENT_SPEED
 				: PULSE_DURATION);
 
 		this.pulses = this.pulses
 			.filter((pulse) => {
-				if ((isLengthDependent && distance <= 0) || pulse >= 1) {
-					dendriteNeuron.fire(isExcitatory);
+				if ((this.isLengthDependent && this.distance <= 0) || pulse >= 1) {
+					this.dendrite.fire(this.isExcitatory);
 					return false;
 				}
 				return true;
@@ -662,34 +674,33 @@ class Synapse {
 
 	updateNeuronPosition() {
 		this.distance = dist(
-			this.master.x,
-			this.master.y,
-			this.slave.x,
-			this.slave.y,
+			this.axon.x,
+			this.axon.y,
+			this.dendrite.x,
+			this.dendrite.y,
 		);
-		this.normalizedX = (this.slave.x - this.master.x) / this.distance;
-		this.normalizedY = (this.slave.y - this.master.y) / this.distance;
+		this.normalizedX = (this.dendrite.x - this.axon.x) / this.distance;
+		this.normalizedY = (this.dendrite.y - this.axon.y) / this.distance;
 		this.distance -= NEURON_RADIUS * 2;
 	}
 
 	display() {
 		const paddedRadius = NEURON_RADIUS * 1.25;
 
-		// synapsen farges grønn hvis eksitatorisk, rød hvis inhibitorisk
-		if (this.type === "excitatory") {
+		if (this.isExcitatory) {
 			stroke(0, 170, 0);
-		} else if (this.type === "inhibitory") {
+		} else {
 			stroke(190, 0, 0);
 		}
 		noFill();
 
 		if (this.distance <= 0) return;
-		if (this.lengthDependent) {
+		if (this.isLengthDependent) {
 			line(
-				this.master.x + this.normalizedX * paddedRadius,
-				this.master.y + this.normalizedY * paddedRadius,
-				this.slave.x - this.normalizedX * paddedRadius,
-				this.slave.y - this.normalizedY * paddedRadius,
+				this.axon.x + this.normalizedX * paddedRadius,
+				this.axon.y + this.normalizedY * paddedRadius,
+				this.dendrite.x - this.normalizedX * paddedRadius,
+				this.dendrite.y - this.normalizedY * paddedRadius,
 			);
 		} else {
 			for (
@@ -698,32 +709,32 @@ class Synapse {
 				i += 6
 			) {
 				point(
-					this.master.x + this.normalizedX * i,
-					this.master.y + this.normalizedY * i,
+					this.axon.x + this.normalizedX * i,
+					this.axon.y + this.normalizedY * i,
 				);
 			}
 		}
 		line(
-			this.slave.x - this.normalizedX * paddedRadius + this.normalizedY * 6,
-			this.slave.y - this.normalizedY * paddedRadius - this.normalizedX * 6,
-			this.slave.x - this.normalizedX * paddedRadius - this.normalizedY * 6,
-			this.slave.y - this.normalizedY * paddedRadius + this.normalizedX * 6,
+			this.dendrite.x - this.normalizedX * paddedRadius + this.normalizedY * 6,
+			this.dendrite.y - this.normalizedY * paddedRadius - this.normalizedX * 6,
+			this.dendrite.x - this.normalizedX * paddedRadius - this.normalizedY * 6,
+			this.dendrite.y - this.normalizedY * paddedRadius + this.normalizedX * 6,
 		);
 
 		// Tegner pulsense som beveger seg over synapsen
 		stroke(240, 240, 0);
 		for (const pulse of this.pulses) {
 			line(
-				this.master.x +
+				this.axon.x +
 					this.normalizedX * (NEURON_RADIUS + pulse * this.distance) +
 					this.normalizedY * 5,
-				this.master.y +
+				this.axon.y +
 					this.normalizedY * (NEURON_RADIUS + pulse * this.distance) -
 					this.normalizedX * 5,
-				this.master.x +
+				this.axon.x +
 					this.normalizedX * (NEURON_RADIUS + pulse * this.distance) -
 					this.normalizedY * 5,
-				this.master.y +
+				this.axon.y +
 					this.normalizedY * (NEURON_RADIUS + pulse * this.distance) +
 					this.normalizedX * 5,
 			);
@@ -731,8 +742,8 @@ class Synapse {
 	}
 
 	delete() {
-		this.master.axons = this.master.axons.filter((s) => s !== this);
-		this.master.dendrites = this.master.dendrites.filter((s) => s !== this);
+		this.axon.axons = this.axon.axons.filter((s) => s !== this);
+		this.axon.dendrites = this.axon.dendrites.filter((s) => s !== this);
 	}
 }
 
@@ -776,24 +787,16 @@ function mouseOverSynapse() {
 			.flatMap((neuron) => neuron.axons)
 			.find((synapse) =>
 				pointOverLine(
-					synapse.master.x,
-					synapse.master.y,
-					synapse.slave.x,
-					synapse.slave.y,
+					synapse.axon.x,
+					synapse.axon.y,
+					synapse.dendrite.x,
+					synapse.dendrite.y,
 					20,
 					mouseX,
 					mouseY,
 				),
 			) || null
 	);
-}
-
-function getExponentialDecayBase() {
-	return Math.exp(Math.log(0.01) / 60 / exponentialDecayTargetSeconds);
-}
-
-function getLinearDecayCoefficient() {
-	return linearDecayPotentialPerSec / 60;
 }
 
 let previousMillis = 0;
