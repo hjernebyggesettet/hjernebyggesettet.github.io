@@ -13,6 +13,7 @@ const PULSE_LENGTH_INDEPENDENT_SPEED = 500; // pixels/s
 const PULSE_LIGHT_DURATION = 2; // s
 
 const NEURON_RADIUS = 20;
+const SYNAPSE_RADIUS = 10;
 const TOOL_BANNER_HEIGHT = 40;
 
 function linearConverge(current, target, decay) {
@@ -21,11 +22,100 @@ function linearConverge(current, target, decay) {
 	return target - Math.max(0, Math.abs(delta) - decay) * deltaSign;
 }
 
+const tools = {
+	move: new Tool({
+		name: "Move tool",
+		info: "Click and drag a neuron to move it",
+		img: "move.png",
+	}),
+	excite: new Tool({
+		name: "Excite tool",
+		info: "Left click a neuron to make it fire.\nRight click a neuron to include/remove it from firing group.\nWhen one neuron in firing group fires, all neurons in fire group fires.",
+		img: "excite.png",
+	}),
+	flashlight: new Tool({
+		name: "Flashlight tool",
+		info: "Left click to make all neurons within range fire.",
+		img: "flashlight.png",
+	}),
+	neuron: new Tool({
+		name: "Neuron tool",
+		info: "Left click to create a neuron.\nRight click to create a neuron with a base frequency.",
+		img: "neuron.png",
+	}),
+	synapseExcitatoryLengthIndependent: new Tool({
+		name: "Length independent excitatory synapse tool",
+		info: "Click a neuron to start making a synapse, and then click another one to complete it.",
+		img: "excitatory_independent.png",
+	}),
+	synapseInhibitoryLengthIndependent: new Tool({
+		name: "Length independent inhibitory synapse tool",
+		info: "Click a neuron to start making an synapse, and then click another one to complete it.",
+		img: "inhibitory_independent.png",
+	}),
+	synapseExcitatoryLengthDependent: new Tool({
+		name: "Excitatory synapse tool",
+		info: "Click a neuron to start making a synapse, and then click another one to complete it.",
+		img: "excitatory_dependent.png",
+	}),
+	synapseInhibitoryLengthDependent: new Tool({
+		name: "Inhibitory synapse tool",
+		info: "Click a neuron to start making a synapse, and then click another one to complete it.",
+		img: "inhibitory_dependent.png",
+	}),
+	delete: new Tool({
+		name: "Delete tool",
+		info: "Click neurons or synapses to delete them.",
+		img: "delete.png",
+	}),
+};
+
 class Network {
 	/** @type {Neuron[]} */
 	neurons = [];
 	/** @type {Synapse[]} */
 	synapses = [];
+
+	/** @type {Tool} */
+	tool = tools.move;
+
+	pointerX = 0;
+	pointerY = 0;
+	pointerPrimaryActive = false;
+	pointerSecondaryActive = false;
+	/** @type {Neuron?} */
+	overNeuron = null;
+	/** @type {Synapse?} */
+	overSynapse = null;
+
+
+	activatePrimaryPointer() {
+		switch (this.tool) {
+			case tools.neuron:
+				
+		}
+
+		this.pointerPrimaryActive = true;
+	}
+
+	movePointer(x, y) {
+		const dx = x - this.pointerX;
+		const dy = y - this.pointerY;
+
+		if (
+			this.pointerPrimaryActive &&
+			this.tool === tools.move &&
+			this.overNeuron
+		) {
+			this.overNeuron.move(this.overNeuron.x + dx, this.overNeuron.y + dy);
+		}
+
+		this.overNeuron = this.neurons.find(pointerOverNeuron(x, y)) || null;
+		this.overSynapse = this.synapses.find(pointerOverSynapse(x, y)) || null;
+
+		this.pointerX = x;
+		this.pointerY = y;
+	}
 
 	// Network elements creation/deletion
 
@@ -122,6 +212,7 @@ class Network {
 				);
 			}
 		}
+
 		for (const synapse of this.synapses) {
 			const increment =
 				deltaSeconds /
@@ -236,6 +327,143 @@ class Network {
 			noFill();
 			ellipse(neuron.x, neuron.y, NEURON_RADIUS * 4, NEURON_RADIUS * 4);
 		}
+
+		switch (this.tool) {
+			case tools.move:
+				noStroke();
+				if (!this.pressing) {
+					fill(240, 240, 0, 40);
+					return;
+				}
+
+				if (this.fireCounter < 60 * this.firePeriod) {
+					++this.fireCounter;
+				} else {
+					for (const neuron of app.network.neurons) {
+						if (
+							pointOverCircle(neuron.x, neuron.y, mouseX, mouseY, this.radius)
+						) {
+							app.network.fireNeuron(neuron);
+						}
+					}
+					this.fireCounter = 0;
+				}
+				fill(240, 240, 0, 10);
+
+				ellipse(mouseX, mouseY, this.radius * 2, this.radius * 2);
+		}
+	}
+}
+
+class Neuron {
+	constructor(ix, iy, isSpontaneouslyActive) {
+		this.x = ix;
+		this.y = iy;
+		this.potential = 0;
+		this.potentialCompletion = 0;
+		this.secondsSinceLastFire = PULSE_LIGHT_DURATION;
+
+		this.spontaneousActivity = isSpontaneouslyActive;
+		this.frequency = FREQUENCY_BASE;
+
+		this.group = 0;
+	}
+
+	constrainPosition() {
+		if (this.x < 0) {
+			this.x = 0;
+		}
+		if (this.x > window.innerWidth) {
+			this.x = window.innerWidth;
+		}
+		if (this.y < 0) {
+			this.y = 0;
+		}
+		if (this.y > window.innerHeight) {
+			this.y = window.innerHeight;
+		}
+	}
+
+	move(newX, newY) {
+		this.x = newX;
+		this.y = newY;
+		this.constrainPosition();
+	}
+
+	newSynapse(dendriteNeuron, isExcitatory, isLengthDependent) {
+		const newSynapse = new Synapse(
+			this,
+			dendriteNeuron,
+			isExcitatory,
+			isLengthDependent,
+		);
+		this.axons.push(newSynapse);
+		dendriteNeuron.dendrites.push(newSynapse);
+	}
+}
+
+class Synapse {
+	/** @type {Neuron} */
+	axon;
+	/** @type {Neuron} */
+	dendrite;
+	/** @type {boolean} */
+	isExcitatory;
+	/** @type {boolean} */
+	isLengthDependent;
+
+	/** @type {number[]} */
+	pulses = [];
+
+	constructor(axon, dendrite, isExcitatory, isLengthDependent) {
+		this.axon = axon;
+		this.dendrite = dendrite;
+		this.isExcitatory = isExcitatory;
+		this.isLengthDependent = isLengthDependent;
+	}
+
+	length() {
+		return Math.hypot(
+			this.dendrite.y - this.axon.y,
+			this.dendrite.x - this.axon.x,
+		);
+	}
+
+	addPulse() {
+		this.pulses.push(0);
+	}
+
+	update(deltaSeconds) {
+		const increment =
+			deltaSeconds /
+			(this.isLengthDependent
+				? this.length() / PULSE_LENGTH_INDEPENDENT_SPEED
+				: PULSE_DURATION);
+
+		this.pulses = this.pulses
+			.filter((pulse) => {
+				if ((this.isLengthDependent && this.length() <= 0) || pulse >= 1) {
+					this.dendrite.fire(this.isExcitatory);
+					return false;
+				}
+				return true;
+			})
+			.map((pulse) => pulse + increment);
+	}
+}
+
+class Tool {
+	/** @type {string} */
+	name;
+	/** @type {string} */
+	info;
+	/** @type {string} */
+	img;
+
+	constructor({ name, info, img }) {
+		this.name = name;
+		this.info = info;
+		this.img = img;
 	}
 }
 
@@ -329,29 +557,7 @@ const app = {
 			release: function () {
 				this.pressing = false;
 			},
-			display: function () {
-				noStroke();
-				if (!this.pressing) {
-					fill(240, 240, 0, 40);
-					return;
-				}
-
-				if (this.fireCounter < 60 * this.firePeriod) {
-					++this.fireCounter;
-				} else {
-					for (const neuron of app.network.neurons) {
-						if (
-							pointOverCircle(neuron.x, neuron.y, mouseX, mouseY, this.radius)
-						) {
-							app.network.fireNeuron(neuron);
-						}
-					}
-					this.fireCounter = 0;
-				}
-				fill(240, 240, 0, 10);
-
-				ellipse(mouseX, mouseY, this.radius * 2, this.radius * 2);
-			},
+			display: function () {},
 			inactiveDisplay: () => {},
 			img: "flashlight.png",
 			buttonElement: undefined,
@@ -617,120 +823,38 @@ const app = {
 			buttonElement: undefined,
 		},
 	],
-	tool: 0,
-	switchTool: function (tool) {
-		if (tool < 0 || tool >= this.tools.length) return false;
-		if (tool === this.tool) return false;
-
-		this.tools[this.tool].buttonElement.removeClass("selected");
-		this.tools[this.tool].buttonElement.addClass("unselected");
+	tool: tools.move,
+	switchTool(tool) {
+		this.tool.buttonElement.removeClass("selected");
+		this.tool.buttonElement.addClass("unselected");
 		this.tool = tool;
-		this.tools[this.tool].buttonElement.removeClass("unselected");
-		this.tools[this.tool].buttonElement.addClass("selected");
-		this.tools[this.tool].activate();
+		this.tool.buttonElement.removeClass("unselected");
+		this.tool.buttonElement.addClass("selected");
+		this.tool.activate();
 		return true;
 	},
 };
 
-class Neuron {
-	constructor(ix, iy, isSpontaneouslyActive) {
-		this.x = ix;
-		this.y = iy;
-		this.potential = 0;
-		this.potentialCompletion = 0;
-		this.secondsSinceLastFire = PULSE_LIGHT_DURATION;
-
-		this.spontaneousActivity = isSpontaneouslyActive;
-		this.frequency = FREQUENCY_BASE;
-
-		this.group = 0;
-	}
-
-	constrainPosition() {
-		if (this.x < 0) {
-			this.x = 0;
-		}
-		if (this.x > window.innerWidth) {
-			this.x = window.innerWidth;
-		}
-		if (this.y < 0) {
-			this.y = 0;
-		}
-		if (this.y > window.innerHeight) {
-			this.y = window.innerHeight;
-		}
-	}
-
-	move(newX, newY) {
-		this.x = newX;
-		this.y = newY;
-		this.constrainPosition();
-	}
-
-	newSynapse(dendriteNeuron, isExcitatory, isLengthDependent) {
-		const newSynapse = new Synapse(
-			this,
-			dendriteNeuron,
-			isExcitatory,
-			isLengthDependent,
-		);
-		this.axons.push(newSynapse);
-		dendriteNeuron.dendrites.push(newSynapse);
-	}
-}
-
-class Synapse {
-	/** @type {Neuron} */
-	axon;
-	/** @type {Neuron} */
-	dendrite;
-	/** @type {boolean} */
-	isExcitatory;
-	/** @type {boolean} */
-	isLengthDependent;
-
-	/** @type {number[]} */
-	pulses = [];
-
-	constructor(axon, dendrite, isExcitatory, isLengthDependent) {
-		this.axon = axon;
-		this.dendrite = dendrite;
-		this.isExcitatory = isExcitatory;
-		this.isLengthDependent = isLengthDependent;
-	}
-
-	length() {
-		return Math.hypot(
-			this.dendrite.y - this.axon.y,
-			this.dendrite.x - this.axon.x,
-		);
-	}
-
-	addPulse() {
-		this.pulses.push(0);
-	}
-
-	update(deltaSeconds) {
-		const increment =
-			deltaSeconds /
-			(this.isLengthDependent
-				? this.length() / PULSE_LENGTH_INDEPENDENT_SPEED
-				: PULSE_DURATION);
-
-		this.pulses = this.pulses
-			.filter((pulse) => {
-				if ((this.isLengthDependent && this.length() <= 0) || pulse >= 1) {
-					this.dendrite.fire(this.isExcitatory);
-					return false;
-				}
-				return true;
-			})
-			.map((pulse) => pulse + increment);
-	}
-}
-
 function pointOverCircle(pointX, pointY, circleX, circleY, circleRadius) {
 	return sq(pointX - circleX) + sq(pointY - circleY) <= sq(circleRadius);
+}
+
+function pointerOverNeuron(pointerX, pointerY) {
+	return (neuron) =>
+		pointOverCircle(pointerX, pointerY, neuron.x, neuron.y, NEURON_RADIUS);
+}
+
+function pointerOverSynapse(pointerX, pointerY) {
+	return (synapse) =>
+		pointOverLine(
+			synapse.axon.x,
+			synapse.axon.y,
+			synapse.dendrite.x,
+			synapse.dendrite.y,
+			SYNAPSE_RADIUS,
+			pointerX,
+			pointerY,
+		);
 }
 
 function pointOverLine(
@@ -738,7 +862,7 @@ function pointOverLine(
 	lineStartY,
 	lineEndX,
 	lineEndY,
-	lineThickness,
+	lineRadius,
 	pointX,
 	pointY,
 ) {
@@ -748,7 +872,7 @@ function pointOverLine(
 	const pointLength = dist(lineStartX, lineStartY, pointX, pointY);
 	const relX = cos(pointAngle - lineAngle) * pointLength;
 	const relY = sin(pointAngle - lineAngle) * pointLength;
-	const radius = lineThickness / 2;
+	const radius = lineRadius;
 
 	const isOverLine =
 		relX > radius && abs(relY) < radius && relX < lineLength - radius;
@@ -771,7 +895,7 @@ function mouseOverSynapse() {
 				synapse.axon.y,
 				synapse.dendrite.x,
 				synapse.dendrite.y,
-				20,
+				SYNAPSE_RADIUS,
 				mouseX,
 				mouseY,
 			),
@@ -782,35 +906,29 @@ function mouseOverSynapse() {
 let previousMillis = 0;
 
 function setup() {
-	// Skrur av høyreklikk-menyen
 	document.body.oncontextmenu = () => false;
 
 	app.workspace = createCanvas(200, 200);
 	app.workspace.position(0, TOOL_BANNER_HEIGHT);
 	app.toolBanner = createDiv("");
 	app.toolBanner.id("toolBanner");
-	app.toolBanner.style("height", `${String(TOOL_BANNER_HEIGHT)}px`);
+	app.toolBanner.style("height", `${TOOL_BANNER_HEIGHT}px`);
 
-	for (let i = 0; i < app.tools.length; ++i) {
-		app.tools[i].buttonElement = createDiv("");
-		app.tools[i].buttonElement.position(i * TOOL_BANNER_HEIGHT, 0);
-		app.tools[i].buttonElement.size(TOOL_BANNER_HEIGHT, TOOL_BANNER_HEIGHT);
-		app.tools[i].buttonElement.parent(app.toolBanner);
-		app.tools[i].buttonElement.addClass("toolButton");
-		if (i === 0) {
-			app.tools[i].buttonElement.addClass("selected");
+	for (const tool of Object.values(tools)) {
+		tool.buttonElement = createDiv("");
+		tool.buttonElement.position(i * TOOL_BANNER_HEIGHT, 0);
+		tool.buttonElement.size(TOOL_BANNER_HEIGHT, TOOL_BANNER_HEIGHT);
+		tool.buttonElement.parent(app.toolBanner);
+		tool.buttonElement.addClass("toolButton");
+		if (tool === tools.move) {
+			tool.buttonElement.addClass("selected");
 		} else {
-			app.tools[i].buttonElement.addClass("unselected");
+			tool.buttonElement.addClass("unselected");
 		}
-		app.tools[i].buttonElement.style(
-			"background-image",
-			`url(${app.tools[i].img})`,
-		);
-
-		app.tools[i].buttonElement.mousePressed(() => {
-			app.switchTool(i);
-		});
+		tool.buttonElement.style("background-image", `url(${tool.img})`);
+		tool.buttonElement.mousePressed(() => app.switchTool(i));
 	}
+
 	updateWorkspaceSize();
 
 	textSize(14);
@@ -852,6 +970,9 @@ function keyPressed() {
 
 function mousePressed() {
 	if (mouseInsideWorkspace()) {
+		switch (mouseButton) {
+			case LEFT: app.network.
+		}
 		if (mouseButton === LEFT) {
 			app.tools[app.tool].lclick();
 		} else if (mouseButton === RIGHT) {
