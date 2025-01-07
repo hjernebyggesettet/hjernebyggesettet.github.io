@@ -404,6 +404,7 @@ const app = {
 			release: function () {
 				if (this.axonNeuron == null) return;
 				const neuron = mouseOverNeuron();
+				if (neuron === this.axonNeuron) return;
 				app.network.addSynapse(this.axonNeuron, neuron, true, false);
 				this.axonNeuron = null;
 			},
@@ -456,7 +457,6 @@ const app = {
 			release: function () {
 				if (this.axonNeuron == null) return;
 				const neuron = mouseOverNeuron();
-				if (neuron == null) return;
 				if (neuron === this.axonNeuron) return;
 				app.network.addSynapse(this.axonNeuron, neuron, false, false);
 				this.axonNeuron = null;
@@ -510,7 +510,6 @@ const app = {
 			release: function () {
 				if (this.axonNeuron == null) return;
 				const neuron = mouseOverNeuron();
-				if (neuron == null) return;
 				if (neuron === this.axonNeuron) return;
 				app.network.addSynapse(this.axonNeuron, neuron, true, true);
 				this.axonNeuron = null;
@@ -551,7 +550,6 @@ const app = {
 			release: function () {
 				if (this.axonNeuron == null) return;
 				const neuron = mouseOverNeuron();
-				if (neuron == null) return;
 				if (neuron === this.axonNeuron) return;
 				app.network.addSynapse(this.axonNeuron, neuron, false, true);
 				this.axonNeuron = null;
