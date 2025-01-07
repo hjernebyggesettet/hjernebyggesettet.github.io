@@ -48,6 +48,22 @@ class Network {
 		if (!(axonNeuron instanceof Neuron) || !(dendriteNeuron instanceof Neuron))
 			return;
 		if (axonNeuron === dendriteNeuron) return;
+
+		const existingSynapse = this.synapses.find(
+			(synapse) =>
+				synapse.axon === axonNeuron && synapse.dendrite === dendriteNeuron,
+		);
+		if (existingSynapse) {
+			if (isExcitatory === existingSynapse.isExcitatory) {
+				existingSynapse.strength++;
+			} else if (existingSynapse.strength === 1) {
+				existingSynapse.isExcitatory = !existingSynapse.isExcitatory;
+			} else {
+				existingSynapse.strength--;
+			}
+			return;
+		}
+
 		this.synapses.push(
 			new Synapse(axonNeuron, dendriteNeuron, isExcitatory, isLengthDependent),
 		);
@@ -61,13 +77,14 @@ class Network {
 
 	// Network updates
 
-	exciteNeuron(neuron, isExcitatory) {
+	exciteNeuron(neuron, isExcitatory, strength) {
 		if (neuron.spontaneousActivity) {
-			neuron.frequency += isExcitatory ? FREQUENCY_IMPULSE : -FREQUENCY_IMPULSE;
+			neuron.frequency +=
+				FREQUENCY_IMPULSE * (isExcitatory ? 1 : -1) * strength;
 			return;
 		}
 
-		neuron.potential += isExcitatory ? POTENTIAL_IMPULSE : -POTENTIAL_IMPULSE;
+		neuron.potential += POTENTIAL_IMPULSE * (isExcitatory ? 1 : -1) * strength;
 
 		if (neuron.potential >= POTENTIAL_THRESHOLD) {
 			this.fireNeuron(neuron);
@@ -135,7 +152,11 @@ class Network {
 						(synapse.isLengthDependent && synapse.length() <= 0) ||
 						pulse >= 1
 					) {
-						this.exciteNeuron(synapse.dendrite, synapse.isExcitatory);
+						this.exciteNeuron(
+							synapse.dendrite,
+							synapse.isExcitatory,
+							synapse.strength,
+						);
 						return false;
 					}
 					return true;
@@ -183,17 +204,40 @@ class Network {
 				synapse.dendrite.y - ny * paddedRadius + nx * 6,
 			);
 
+			const pulseWidth = 5 + 2 * (synapse.strength - 1);
 			stroke(240, 240, 0);
 			for (const pulse of synapse.pulses) {
 				const progression =
 					paddedRadius + pulse * (synapse.length() - 2 * paddedRadius);
 				line(
-					synapse.axon.x + nx * progression + ny * 5,
-					synapse.axon.y + ny * progression - nx * 5,
-					synapse.axon.x + nx * progression - ny * 5,
-					synapse.axon.y + ny * progression + nx * 5,
+					synapse.axon.x + nx * progression + ny * pulseWidth,
+					synapse.axon.y + ny * progression - nx * pulseWidth,
+					synapse.axon.x + nx * progression - ny * pulseWidth,
+					synapse.axon.y + ny * progression + nx * pulseWidth,
 				);
 			}
+
+			if (synapse.strength === 1) continue;
+			if (synapse.isExcitatory) {
+				stroke(0, 170, 0);
+			} else {
+				stroke(190, 0, 0);
+			}
+			fill(20);
+			const strengthIndicatorX =
+				synapse.axon.x + (synapse.dendrite.x - synapse.axon.x) * 0.3;
+			const strengthIndicatorY =
+				synapse.axon.y + (synapse.dendrite.y - synapse.axon.y) * 0.3;
+			ellipse(strengthIndicatorX, strengthIndicatorY, 18, 18);
+			if (synapse.isExcitatory) {
+				fill(0, 170, 0);
+			} else {
+				fill(190, 0, 0);
+			}
+			noStroke();
+			textAlign(CENTER, CENTER);
+			textSize(12);
+			text(synapse.strength, strengthIndicatorX, strengthIndicatorY + 1);
 		}
 
 		for (const neuron of this.neurons) {
@@ -687,6 +731,8 @@ class Synapse {
 	/** @type {boolean} */
 	isLengthDependent;
 
+	/** @type {number} */
+	strength = 1;
 	/** @type {number[]} */
 	pulses = [];
 
@@ -810,9 +856,6 @@ function setup() {
 		});
 	}
 	updateWorkspaceSize();
-
-	textSize(14);
-	textAlign(LEFT, TOP);
 }
 
 function draw() {
@@ -831,6 +874,9 @@ function draw() {
 			app.tools[i].inactiveDisplay();
 		}
 	}
+
+	textAlign(LEFT, TOP);
+	textSize(14);
 
 	if (app.tools.length) {
 		fill(240);
